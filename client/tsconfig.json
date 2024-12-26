@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "moduleResolution": "node",
+    "module": "esnext",
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "plugins": [
+      {
+        "name": "typescript-plugin-css-modules"
+      }
+    ],
+    "lib": [
+      "es2020",
+      "dom",
+      "dom.iterable"
+    ]
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

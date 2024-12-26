@@ -1,0 +1,40 @@
+{
+  "name": "queue-managment",
+  "version": "1.0.0",
+  "description": "",
+  "proxy": "http://localhost:3000",
+  "@parcel/resolver-default": {
+    "packageExports": true
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "parcel ./src/index.html",
+    "build": "parcel build src/index.html"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@ant-design/icons": "^5.5.2",
+    "@ant-design/v5-patch-for-react-19": "^1.0.2",
+    "@types/validator": "^13.12.2",
+    "antd": "^5.22.6",
+    "axios": "^1.7.9",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router": "^7.1.1",
+    "react-router-dom": "^7.1.1",
+    "validator": "^13.12.0"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@parcel/transformer-sass": "^2.13.3",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "buffer": "^6.0.3",
+    "parcel": "^2.13.3",
+    "process": "^0.11.10",
+    "typescript": "^5.7.2",
+    "uuid": "^11.0.3"
+  }
+}

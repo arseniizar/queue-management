@@ -1,0 +1,30 @@
+.site-layout-background {
+  padding: 0;
+}
+
+.layoutContent {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.site-layout {
+  position: relative;
+}
+
+.site-layout-background {
+  padding: 24px;
+  max-height: 360px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.layoutFooter {
+  text-align: center;
+}
+
+@media (max-width: 991.98px) {
+  .layoutContent {
+    margin-top: 50px;
+  }
+}

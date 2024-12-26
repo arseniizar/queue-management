@@ -1,0 +1,149 @@
+# Node modules
+/node_modules
+/client/node_modules
+/server/node_modules
+
+# Compiled output
+/dist
+/client/dist
+/server/dist
+/build
+/client/build
+/server/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+Icon?
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Tests
+/coverage
+/.nyc_output
+/client/coverage
+/server/coverage
+/junit.xml
+/test-results.xml
+/integration-test-results.xml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+/client/.env
+/client/.env.local
+/server/.env
+/server/.env.local
+
+# Lock files
+/package-lock.json
+/client/package-lock.json
+/server/package-lock.json
+/pnpm-lock.yaml
+/yarn.lock
+
+# Dependency directories
+/.pnp
+.pnp.js
+/client/.pnp
+/client/.pnp.js
+/server/.pnp
+/server/.pnp.js
+
+# Build artifacts
+*.out
+*.exe
+*.app
+*.dll
+*.so
+*.dylib
+*.pyc
+*.pyo
+*.pyd
+*.prof
+*.elf
+*.o
+*.a
+*.lo
+*.la
+*.class
+*.jar
+
+# IDE and editor settings
+/.idea
+/client/.idea
+/server/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Ignore backups and temp files
+*.bak
+*.tmp
+*.swp
+*.swo
+*.old
+*.orig
+*.rej
+*.~lock.*
+*.~*
+*.crdownload
+*.part
+*.gs
+*.gtp
+*.draft
+
+# Ignore compressed files
+*.tar
+*.tgz
+*.gz
+*.rar
+*.zip
+*.7z
+*.bz2
+*.xz
+*.bak
+
+# Miscellaneous
+/client/tmp
+/server/tmp
+/node-repl-history
+/.yarn-integrity
+/.envrc
+.venv/
+
+# Lock files and artifacts from various dependency managers
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+*.tsbuildinfo
+
+# Exclude specific configuration
+/client/config.json
+/server/config.json
+
+# Parcel cache
+.parcel-cache
+/client/.parcel-cache
+/server/.parcel-cache
