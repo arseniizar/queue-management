@@ -4,10 +4,7 @@ import {Request} from 'express';
 import {Injectable, UnauthorizedException} from '@nestjs/common';
 
 @Injectable()
-export class RefreshTokenStrategy extends PassportStrategy(
-    Strategy,
-    'jwt-refresh',
-) {
+export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
     constructor() {
         super({
             jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -27,6 +24,6 @@ export class RefreshTokenStrategy extends PassportStrategy(
             throw new UnauthorizedException('Invalid refresh token format');
         }
 
-        return {...payload, refreshToken};
+        return {...payload, refreshToken, roles: payload.roles};
     }
 }

@@ -1,12 +1,22 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import {Controller, Get} from '@nestjs/common';
+import {DatabaseService} from "@/database/database.service";
+import {SkipThrottle} from "@nestjs/throttler";
 
+@SkipThrottle()
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+    constructor(private readonly databaseService: DatabaseService) {
+    }
 
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
-  }
+    @Get('/health-check')
+    async healthCheck(): Promise<{ status: string; database: string }> {
+        const dbStatus = await this.databaseService.isConnected()
+            ? 'Connected'
+            : 'Disconnected';
+
+        return {
+            status: 'OK',
+            database: dbStatus,
+        };
+    }
 }

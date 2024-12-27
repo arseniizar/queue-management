@@ -1,4 +1,11 @@
-import {ForbiddenException, HttpException, HttpStatus, Injectable,} from '@nestjs/common';
+import {
+    BadRequestException,
+    ForbiddenException,
+    HttpException,
+    HttpStatus,
+    Injectable,
+    NotFoundException,
+} from '@nestjs/common';
 import {InjectModel} from '@nestjs/mongoose';
 import {Model} from 'mongoose';
 import {AuthService} from 'src/auth/auth.service';
@@ -11,6 +18,7 @@ import {RolesService} from 'src/roles/roles.service';
 import {Queue, QueueDocument} from 'src/schemas/queue.schema';
 import {UsersService} from 'src/users/users.service';
 import {v4 as uuid} from 'uuid';
+import {UserDocument} from "@/schemas/user.schema";
 
 interface Place {
     username: string;
@@ -255,5 +263,38 @@ export class QueueService {
             {new: true},
         );
         return updatedQueue;
+    }
+
+
+    async approveClient(clientId: string, queueId: string): Promise<UserDocument> {
+        const user = await this.userService.findById(clientId);
+        if (!user) {
+            throw new NotFoundException(`Client with ID "${clientId}" not found.`);
+        }
+
+        if (user.approved) {
+            throw new BadRequestException(`Client is already approved.`);
+        }
+
+        user.cancelled = false;
+        user.approved = true;
+        user.processed = true;
+        return user.save();
+    }
+
+    async cancelClient(clientId: string, queueId: string): Promise<UserDocument> {
+        const user = await this.userService.findById(clientId);
+        if (!user) {
+            throw new NotFoundException(`Client with ID "${clientId}" not found.`);
+        }
+
+        if (user.cancelled) {
+            throw new BadRequestException(`Client is already cancelled.`);
+        }
+
+        user.approved = false;
+        user.cancelled = true;
+        user.processed = true;
+        return user.save();
     }
 }

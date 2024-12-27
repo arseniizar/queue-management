@@ -1,20 +1,22 @@
 import {Body, Controller, Get, Post, Req, UseGuards} from '@nestjs/common';
+import {Throttle} from '@nestjs/throttler';
 import {Request} from 'express';
 import {AuthDto} from 'src/dto/auth.dto';
 import {CreateUserDto} from 'src/dto/create-user.dto';
 import {ForgotPasswordDto} from 'src/dto/forgot-password.dto';
 import {ResetPasswordDto} from 'src/dto/reset-password.dto';
-import {DataValidationPipe} from 'src/pipes/data-transformation.pipe';
+import {DataTransformationPipe} from '@/pipes/data-transformation.pipe';
 import {AuthService} from './auth.service';
 import {AccessTokenGuard} from './guards/accessToken.guard';
 import {RefreshTokenGuard} from './guards/refreshToken.guard';
-
+import {ThrottleConfig} from '@/constants';
 
 export interface AuthRequest extends Request {
     user?: {
         sub: string;
         refreshToken?: string;
-        [key: string]: any; // if you have extra properties
+        isPremium?: boolean;
+        [key: string]: any;
     };
 }
 
@@ -23,35 +25,44 @@ export class AuthController {
     constructor(private readonly authService: AuthService) {
     }
 
+    @Throttle(ThrottleConfig.SIGNUP)
     @Post('signup')
-    signup(@Body(DataValidationPipe) createUserDto: CreateUserDto) {
+    async signup(@Body(DataTransformationPipe) createUserDto: CreateUserDto) {
         return this.authService.signUp(createUserDto);
     }
 
+    @Throttle(ThrottleConfig.SIGNIN)
     @Post('signin')
-    signin(@Body() data: AuthDto) {
-        return this.authService.signIn(data);
+    async signin(@Body() data: AuthDto) {
+        try {
+            return this.authService.signIn(data);
+        } catch (error) {
+            throw new Error('Invalid credentials');
+        }
     }
 
     @UseGuards(AccessTokenGuard)
+    @Throttle(ThrottleConfig.LOGOUT)
     @Get('logout')
-    logout(@Req() req: AuthRequest) {
+    async logout(@Req() req: AuthRequest) {
         if (!req.user?.sub) {
             throw new Error('No user ID found in JWT');
         }
         return this.authService.logout(req.user.sub);
     }
 
+    @Throttle(ThrottleConfig.CHANGE_DATA)
     @Post('change-data')
-    changeData(@Body(DataValidationPipe) data: CreateUserDto) {
+    async changeData(@Body(DataTransformationPipe) data: CreateUserDto) {
         return this.authService.changeUserData(data);
     }
 
     @UseGuards(RefreshTokenGuard)
+    @Throttle(ThrottleConfig.REFRESH_TOKENS)
     @Get('refresh')
-    refreshTokens(@Req() req: AuthRequest) {
+    async refreshTokens(@Req() req: AuthRequest) {
         if (!req.user || !req.user.refreshToken) {
-            return {};
+            throw new Error('Invalid refresh token');
         }
         const userId = req.user.sub;
         const refreshToken = req.user.refreshToken;
@@ -59,18 +70,24 @@ export class AuthController {
     }
 
     @UseGuards(AccessTokenGuard)
+    @Throttle(ThrottleConfig.PROFILE)
     @Get('profile')
-    getProfile(@Req() req: AuthRequest) {
+    async getProfile(@Req() req: AuthRequest) {
+        if (!req.user) {
+            throw new Error('No user profile found');
+        }
         return req.user;
     }
 
+    @Throttle(ThrottleConfig.FORGOT_PASSWORD)
     @Post('forgot-password')
-    forgotPassword(@Body(DataValidationPipe) data: ForgotPasswordDto) {
+    async forgotPassword(@Body(DataTransformationPipe) data: ForgotPasswordDto) {
         return this.authService.forgotPassword(data);
     }
 
+    @Throttle(ThrottleConfig.RESET_PASSWORD)
     @Post('reset-password')
-    resetPassword(@Body() data: ResetPasswordDto) {
+    async resetPassword(@Body() data: ResetPasswordDto) {
         return this.authService.resetPassword(data);
     }
 }

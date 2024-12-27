@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 import {useNavigate, useSearchParams} from "react-router-dom";
 import {Button, Form, Typography} from "antd";
 import {UserAddOutlined, PlayCircleOutlined} from "@ant-design/icons";
@@ -14,6 +14,14 @@ import {ColumnsType} from "antd/es/table";
 import ClientActions from "../components/QueueDetails/ClientActions";
 import StepInQueueModalForm from "../components/StepInQueueModalForm/StepInQueueModalForm";
 
+const debounce = (func: (...args: any[]) => void, delay: number) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    return (...args: any[]) => {
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+    };
+};
+
 const QueueDetails: React.FC = () => {
     const {setCurrent, axiosAPI, queueData, getQueueData, messageService, userData} = useAuthContext();
     const [searchParams] = useSearchParams();
@@ -25,6 +33,21 @@ const QueueDetails: React.FC = () => {
     const [placesData, setPlacesData] = useState<QueuePlace[]>([]);
     const [clientsData, setClientsData] = useState<QueueClient[]>([]);
     const navigate = useNavigate();
+    const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+
+    const debouncedFetchData = useCallback(
+        debounce(async (queueId: string) => {
+            setLoading(true);
+            try {
+                await getQueueData(queueId);
+            } catch (error) {
+                messageService.open({type: "error", content: "Failed to load queue data"});
+            } finally {
+                setLoading(false);
+            }
+        }, 300),
+        [getQueueData]
+    );
 
     useEffect(() => {
         const queueId = searchParams.get("queue");
@@ -34,19 +57,8 @@ const QueueDetails: React.FC = () => {
             return;
         }
 
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                await getQueueData(queueId);
-            } catch (error) {
-                messageService.open({type: "error", content: "Failed to load queue data"});
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [searchParams, getQueueData]);
+        debouncedFetchData(queueId);
+    }, [searchParams, debouncedFetchData, refreshTrigger]);
 
     useEffect(() => {
         if (queueData) {
@@ -66,65 +78,63 @@ const QueueDetails: React.FC = () => {
         }
     }, [queueData]);
 
-    const deletePlace = async (place: QueuePlace) => {
-        try {
-            await axiosAPI.deletePlace({userId: place.userId, queueId: place.queueId});
-            messageService.open({type: "success", content: "Place deleted!"});
-            await getQueueData(place.queueId);
-        } catch (error: any) {
-            messageService.open({
-                type: "error",
-                content: error.response?.data?.message || "Failed to delete place.",
-            });
-        }
-    };
-
-    const approveClient = async (client: QueueClient) => {
-        try {
-            await axiosAPI.approveClient(client.userId, client.queueId);
-            messageService.open({type: "success", content: "Client approved!"});
-            await getQueueData(client.queueId);
-        } catch (error) {
-            messageService.open({type: "error", content: "Failed to approve client."});
-        }
-    };
-
-    const cancelClient = async (client: QueueClient) => {
-        try {
-            await axiosAPI.cancelClient(client.userId, client.queueId);
-            messageService.open({type: "success", content: "Client canceled!"});
-            await getQueueData(client.queueId);
-        } catch (error) {
-            messageService.open({type: "error", content: "Failed to cancel client."});
-        }
-    };
-
-    const deleteClient = async (client: QueueClient) => {
-        try {
-            await getQueueData(client.queueId);
-            const updatedClient: QueueClient | undefined = queueData.clients.find(
-                (c: QueueClient) => c.username === client.username
-            );
-            if (!updatedClient || !updatedClient.userId) {
+    const deletePlace = useCallback(
+        debounce(async (place: QueuePlace) => {
+            try {
+                await axiosAPI.deletePlace({userId: place.userId, queueId: place.queueId});
+                messageService.open({type: "success", content: "Place deleted!"});
+                setRefreshTrigger((prev) => prev + 1);
+            } catch (error: any) {
                 messageService.open({
                     type: "error",
-                    content: "Client not found or invalid.",
+                    content: error.response?.data?.message || "Failed to delete place.",
                 });
-                return;
             }
-            const payload = {userId: updatedClient.userId, queueId: updatedClient.queueId};
-            await axiosAPI.deleteClient(payload);
-            messageService.open({type: "success", content: "Client deleted!"});
-            await getQueueData(updatedClient.queueId);
-        } catch (error: any) {
-            console.error("Failed to delete client:", error.response || error);
+        }, 300),
+        [axiosAPI]
+    );
 
-            messageService.open({
-                type: "error",
-                content: error.response?.data?.message || "Failed to delete client.",
-            });
-        }
-    };
+    const approveClient = useCallback(
+        debounce(async (client: QueueClient) => {
+            try {
+                await axiosAPI.approveClient(client.userId, client.queueId);
+                messageService.open({type: "success", content: "Client approved!"});
+                setRefreshTrigger((prev) => prev + 1);
+            } catch (error) {
+                messageService.open({type: "error", content: "Failed to approve client."});
+            }
+        }, 300),
+        [axiosAPI]
+    );
+
+    const cancelClient = useCallback(
+        debounce(async (client: QueueClient) => {
+            try {
+                await axiosAPI.cancelClient(client.userId, client.queueId);
+                messageService.open({type: "success", content: "Client canceled!"});
+                setRefreshTrigger((prev) => prev + 1);
+            } catch (error) {
+                messageService.open({type: "error", content: "Failed to cancel client."});
+            }
+        }, 300),
+        [axiosAPI]
+    );
+
+    const deleteClient = useCallback(
+        debounce(async (client: QueueClient) => {
+            try {
+                await axiosAPI.deleteClient({userId: client.userId, queueId: client.queueId});
+                messageService.open({type: "success", content: "Client deleted!"});
+                setRefreshTrigger((prev) => prev + 1);
+            } catch (error: any) {
+                messageService.open({
+                    type: "error",
+                    content: error.response?.data?.message || "Failed to delete client.",
+                });
+            }
+        }, 300),
+        [axiosAPI]
+    );
 
     const placeColumns: ColumnsType<QueuePlace> = [
         {title: "Username", dataIndex: "username", key: "username"},
@@ -155,7 +165,7 @@ const QueueDetails: React.FC = () => {
                 );
 
                 return appointment.time
-                    ? `${appointment.time} - ${place?.username || "Unknown place"}`
+                    ? `${appointment.time} | ${place?.username || "Unknown place"}`
                     : "No appointment";
             },
         },
@@ -168,6 +178,7 @@ const QueueDetails: React.FC = () => {
                     onApprove={approveClient}
                     onCancel={cancelClient}
                     onDelete={deleteClient}
+                    refreshTrigger={refreshTrigger}
                 />
             ),
         },

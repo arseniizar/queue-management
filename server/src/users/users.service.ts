@@ -60,8 +60,9 @@ export class UsersService {
     async findOneAndUpdate(
         filter: Partial<User> | Record<string, any>,
         update: Partial<User> | Record<string, any>,
+        options: Record<string, any> = {new: true}
     ): Promise<UserDocument | null> {
-        return this.userModel.findOneAndUpdate(filter, update).exec();
+        return this.userModel.findOneAndUpdate(filter, update, options).exec();
     }
 
     /**

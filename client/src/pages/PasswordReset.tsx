@@ -17,7 +17,6 @@ const PasswordReset = () => {
         console.log("Success:", values);
         const token = searchParams.get("token");
         const data = {token, password};
-        console.log(data);
 
         if (data.token === null) {
             messageService.open({

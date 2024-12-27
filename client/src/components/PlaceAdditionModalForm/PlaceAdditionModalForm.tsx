@@ -48,7 +48,6 @@ const PlaceAdditionModalForm: React.FC<ModalFormProps> = ({
         };
 
         try {
-            console.log("Sending additionData:", additionData); // Debug log
             await axiosAPI.addPlaceToQueue(additionData);
             await getQueueData(queueId);
             messageService.open({

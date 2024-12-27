@@ -1,0 +1,33 @@
+const API_ENDPOINTS = {
+    AUTH: {
+        LOGIN: "/auth/signin",
+        SIGNUP: "/auth/signup",
+        LOGOUT: "/auth/logout",
+        PROFILE: "/auth/profile",
+        FORGOT_PASSWORD: "/auth/forgot-password",
+        RESET_PASSWORD: "/auth/reset-password",
+        REFRESH_TOKEN: "/auth/refresh-token",
+        CHANGE_DATA: "/auth/change-data",
+    },
+    QUEUES: {
+        GET_ALL: "/queues/get-queues",
+        ADD_CLIENT: "/queues/add-client",
+        ADD_PLACE: "/queues/add-place",
+        CREATE_QUEUE: "/queues/create-queue",
+        CREATE_PLACE: "/queues/create-place",
+        DELETE_QUEUE: "/queues/delete-queue",
+        DELETE_CLIENT: "/queues/delete-client",
+        DELETE_PLACE: "/queues/delete-place",
+        APPROVE_CLIENT: "/queues/approve",
+        CANCEL_CLIENT: "/queues/cancel",
+        FIND_BY_ID: "/queues",
+    },
+    USERS: {
+        GET_BY_USERNAME: "/users",
+    },
+    HEALTH: {
+        CHECK: "/health-check",
+    },
+};
+
+export default API_ENDPOINTS;

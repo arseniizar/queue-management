@@ -80,14 +80,12 @@ const StepInQueueModalForm: React.FC<{
         };
 
         try {
-            console.log("Adding client to queue with data:", {queueId, username, appointment});
 
             await axiosAPI.addClientToQueue(queueId, username, appointment);
 
             await getQueueData(queueId);
             messageService.open({type: "success", content: "Client stepped into queue successfully!"});
 
-            // Reset form and close the modal
             form.resetFields();
             onCancel();
         } catch (error: any) {

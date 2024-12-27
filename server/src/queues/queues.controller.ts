@@ -1,73 +1,114 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Req,
-} from "@nestjs/common";
-import { AddClientToQueueDto } from "src/dto/add-client-to-queue.dto";
-import { QueuePlaceDto } from "src/dto/queue-place.dto";
-import { QueueDto } from "src/dto/queue.dto";
-import { DataValidationPipe } from "src/pipes/data-transformation.pipe";
-import { QueueService } from "./queues.service";
-import { UserDeleteDto } from "src/dto/user-delete.dto";
-import { QueueDeleteDto } from "src/dto/queue-delete.dto";
-import { AddPlaceToQueue } from "src/dto/add-place-to-queue.dto";
+import {Body, Controller, Get, Param, Patch, Post, UseGuards,} from "@nestjs/common";
+import {Throttle} from "@nestjs/throttler";
+import {AddClientToQueueDto} from "src/dto/add-client-to-queue.dto";
+import {QueuePlaceDto} from "src/dto/queue-place.dto";
+import {QueueDto} from "src/dto/queue.dto";
+import {DataTransformationPipe} from "@/pipes/data-transformation.pipe";
+import {QueueService} from "./queues.service";
+import {UserDeleteDto} from "src/dto/user-delete.dto";
+import {QueueDeleteDto} from "src/dto/queue-delete.dto";
+import {AddPlaceToQueue} from "src/dto/add-place-to-queue.dto";
+import {AccessTokenGuard} from "@/auth/guards/accessToken.guard";
+import {RolesGuard} from "@/auth/guards/roles.guard";
+import {Roles} from "@/decorators/roles.decorator";
+import {Role} from "@/enums/role.enum";
+import {ThrottleConfig} from "@/constants";
+import {User} from "@/schemas/user.schema";
 
 @Controller("queues")
+@UseGuards(AccessTokenGuard) // Apply globally to all endpoints
 export class QueueController {
-  constructor(private readonly queueService: QueueService) {}
+    constructor(private readonly queueService: QueueService) {
+    }
 
-  @Post("add-client")
-  async addClientToQueue(
-    @Body(DataValidationPipe) addClientToQueueDto: AddClientToQueueDto
-  ) {
-    await this.queueService.addClientToQueue(addClientToQueueDto);
-  }
+    @Throttle(ThrottleConfig.ADD_CLIENT)
+    @Post("add-client")
+    async addClientToQueue(
+        @Body(DataTransformationPipe) addClientToQueueDto: AddClientToQueueDto
+    ) {
+        await this.queueService.addClientToQueue(addClientToQueueDto);
+    }
 
-  @Post("add-place")
-  async addPlaceToQueue(
-    @Body(DataValidationPipe) addPlaceToQueueDto: AddPlaceToQueue
-  ) {
-    await this.queueService.addPlaceToQueue(addPlaceToQueueDto);
-  }
+    @Throttle(ThrottleConfig.ADD_PLACE)
+    @Post("add-place")
+    async addPlaceToQueue(
+        @Body(DataTransformationPipe) addPlaceToQueueDto: AddPlaceToQueue
+    ) {
+        await this.queueService.addPlaceToQueue(addPlaceToQueueDto);
+    }
 
-  @Post("create-queue")
-  async createQueue(@Body(DataValidationPipe) queueDto: QueueDto) {
-    return this.queueService.createQueue(queueDto);
-  }
+    @Throttle(ThrottleConfig.CREATE_QUEUE)
+    @Roles(Role.Admin) // Only admin can create a queue
+    @UseGuards(RolesGuard)
+    @Post("create-queue")
+    async createQueue(@Body(DataTransformationPipe) queueDto: QueueDto) {
+        return this.queueService.createQueue(queueDto);
+    }
 
-  @Post("create-place")
-  async createPlace(@Body(DataValidationPipe) queuePlaceDto: QueuePlaceDto) {
-    return this.queueService.createPlace(queuePlaceDto);
-  }
+    @Throttle(ThrottleConfig.CREATE_PLACE)
+    @Roles(Role.Admin) // Only admin can create a place
+    @UseGuards(RolesGuard)
+    @Post("create-place")
+    async createPlace(@Body(DataTransformationPipe) queuePlaceDto: QueuePlaceDto) {
+        return this.queueService.createPlace(queuePlaceDto);
+    }
 
-  @Get("get-queues")
-  async getQueues() {
-    return this.queueService.getAllQueues();
-  }
+    @Throttle(ThrottleConfig.GET_QUEUES)
+    @Get("get-queues")
+    async getQueues() {
+        return this.queueService.getAllQueues();
+    }
 
-  @Get(":id")
-  async findById(@Param("id") id: string) {
-    const findedQueue = await this.queueService.findById(id);
-    return findedQueue;
-  }
+    @Throttle(ThrottleConfig.FIND_QUEUE)
+    @Get(":id")
+    async findById(@Param("id") id: string) {
+        return await this.queueService.findById(id);
+    }
 
-  @Patch("delete-place")
-  async removePlace(@Body(DataValidationPipe) userDeleteDto: UserDeleteDto) {
-    return this.queueService.deletePlace(userDeleteDto);
-  }
+    @Throttle(ThrottleConfig.DELETE_PLACE)
+    @Roles(Role.Admin)
+    @UseGuards(RolesGuard)
+    @Patch("delete-place")
+    async removePlace(@Body(DataTransformationPipe) userDeleteDto: UserDeleteDto) {
+        return this.queueService.deletePlace(userDeleteDto);
+    }
 
-  @Patch("delete-client")
-  async removeClient(@Body(DataValidationPipe) userDeleteDto: UserDeleteDto) {
-    return this.queueService.deleteClient(userDeleteDto);
-  }
+    @Throttle(ThrottleConfig.DELETE_CLIENT)
+    @Roles(Role.Admin, Role.Employee)
+    @UseGuards(RolesGuard)
+    @Patch("delete-client")
+    async removeClient(@Body(DataTransformationPipe) userDeleteDto: UserDeleteDto) {
+        return this.queueService.deleteClient(userDeleteDto);
+    }
 
-  @Patch("delete-queue")
-  async removeQueue(@Body(DataValidationPipe) queueDeleteDto: QueueDeleteDto) {
-    return this.queueService.deleteQueue(queueDeleteDto.queueId);
-  }
+    @Throttle(ThrottleConfig.DELETE_QUEUE)
+    @Roles(Role.Admin) // Only admin can delete a queue
+    @UseGuards(RolesGuard)
+    @Patch("delete-queue")
+    async removeQueue(@Body(DataTransformationPipe) queueDeleteDto: QueueDeleteDto) {
+        return this.queueService.deleteQueue(queueDeleteDto.queueId);
+    }
+
+
+    @Throttle(ThrottleConfig.APPROVE_CLIENT)
+    @Patch('approve/:clientId/:queueId')
+    @Roles(Role.Admin)
+    @UseGuards(RolesGuard)
+    async approveClient(
+        @Param('clientId') clientId: string,
+        @Param('queueId') queueId: string,
+    ): Promise<User> {
+        return this.queueService.approveClient(clientId, queueId);
+    }
+
+    @Throttle(ThrottleConfig.CANCEL_CLIENT)
+    @Patch('cancel/:clientId/:queueId')
+    @Roles(Role.Admin)
+    @UseGuards(RolesGuard)
+    async cancelClient(
+        @Param('clientId') clientId: string,
+        @Param('queueId') queueId: string,
+    ): Promise<User> {
+        return this.queueService.cancelClient(clientId, queueId);
+    }
 }

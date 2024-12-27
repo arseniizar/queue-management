@@ -34,19 +34,36 @@ export class AuthService {
     async signUp(data: CreateUserDto) {
         const hashedPassword = await bcrypt.hash(data.password, 10);
         const userRole = await this.rolesService.findRoles({name: 'client'});
+
         if (userRole === null)
-            throw new HttpException(
-                'User role not found',
-                HttpStatus.BAD_REQUEST,
-            );
+            throw new HttpException('User role not found', HttpStatus.BAD_REQUEST);
+
         const createdUser = await this.usersService.create({
             ...data,
             roles: userRole._id.toString(),
             password: hashedPassword,
         });
-        const tokens = await this.getTokens(createdUser?._id, createdUser?.username);
+
+        const tokens = await this.getTokens(createdUser?._id, createdUser?.username, userRole._id.toString());
         await this.updateRefreshToken(createdUser?._id, tokens.refreshToken);
+
         return tokens;
+    }
+
+
+    async validateUser(username: string, password: string): Promise<any> {
+        const user = await this.usersService.findOne(username);
+        if (!user) {
+            throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+        }
+
+        const isMatching = await bcrypt.compare(password, user.password);
+        if (!isMatching) {
+            throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+        }
+
+        const {password: _, ...result} = user.toObject();
+        return result;
     }
 
     async employ(username: string) {
@@ -63,21 +80,44 @@ export class AuthService {
         return employee;
     }
 
-    async signIn(data: AuthDto) {
-        const user = await this.usersService.findOne(data.username);
+    async makeAdmin(username: string) {
+        const user = await this.usersService.findOne(username);
         if (!user) {
-            throw new HttpException('Wrong credentials', HttpStatus.BAD_REQUEST);
+            throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
         }
 
-        await this.verifyBcrypt(data.password, user.password);
+        const adminRole = await this.rolesService.findRoles({name: 'admin'});
+        if (!adminRole) {
+            throw new HttpException('Admin role not found', HttpStatus.BAD_REQUEST);
+        }
 
-        user.password = '';
 
-        const tokens = await this.getTokens(user._id, user.username);
+        const updatedUser = await this.usersService.findOneAndUpdate(
+            {_id: user._id},
+            {roles: adminRole._id.toString()},
+        );
+
+        if (!updatedUser) {
+            throw new HttpException('Failed to update user role', HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        return updatedUser;
+    }
+
+
+    async signIn(data: AuthDto) {
+        const user = await this.validateUser(data.username, data.password);
+
+        const userRole = await this.rolesService.findById(user.roles);
+        if (!userRole) {
+            throw new HttpException('User role not found', HttpStatus.BAD_REQUEST);
+        }
+        const tokens = await this.getTokens(user._id, user.username, userRole._id.toString());
         await this.updateRefreshToken(user._id, tokens.refreshToken);
 
         return tokens;
     }
+
 
     async forgotPassword(data: ForgotPasswordDto) {
         const user = await this.usersService.findByEmail(data.email);
@@ -135,23 +175,24 @@ export class AuthService {
         }
     }
 
-    async getTokens(userId?: Types.ObjectId | string, username?: string) {
-        if (!userId || !username) {
+    async getTokens(userId?: Types.ObjectId | string, username?: string, roles?: string) {
+        if (!userId || !username || !roles) {
             throw new HttpException('Invalid user data', HttpStatus.BAD_REQUEST);
         }
         const sub = userId.toString();
         const [accessToken, refreshToken] = await Promise.all([
-            this.jwtService.signAsync({sub, username}, {
+            this.jwtService.signAsync({sub, username, roles}, { // Include roles here
                 secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
                 expiresIn: '15m',
             }),
-            this.jwtService.signAsync({sub, username}, {
+            this.jwtService.signAsync({sub, username, roles}, { // Include roles here
                 secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
                 expiresIn: '7d',
             }),
         ]);
         return {accessToken, refreshToken};
     }
+
 
     async updateRefreshToken(userId?: Types.ObjectId | string, refreshToken?: string) {
         if (!userId || !refreshToken) {

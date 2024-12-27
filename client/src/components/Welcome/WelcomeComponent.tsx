@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Button, Card, Typography} from "antd";
+import {Button, Card, Flex, Space, Typography} from "antd";
 import "./WelcomeComponent.scss";
 
 const {Title} = Typography;
@@ -77,9 +77,16 @@ const WelcomeComponent: React.FC = () => {
             </div>
             <Card className="welcome-card" bordered={false}>
                 <Title level={2}>Welcome to Queue Manager!</Title>
-                <Button type="primary" size="large">
-                    Get Started
-                </Button>
+                <Flex vertical={true} align={'center'}>
+                    <Typography.Text>
+                        Queue Manager is a simple application to help manage queues and appointments.
+                        It includes features for scheduling, adding clients, and keeping track of active queues.
+                    </Typography.Text>
+                    <br/>
+                    <Button type="primary" size="large">
+                        Get Started
+                    </Button>
+                </Flex>
             </Card>
         </div>
     );

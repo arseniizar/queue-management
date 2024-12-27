@@ -1,9 +1,9 @@
 import React, {useEffect, useState} from "react";
-import {Layout, message, ConfigProvider, theme, Progress} from "antd";
+import {Layout, message, ConfigProvider, theme, Progress, Alert} from "antd";
 import SiderBar from "./components/Sider/SiderBar";
 import SiteLayout from "./components/SiteLayout/SiteLayout";
 import {AuthContext, IAuthContext} from "./context/context";
-import {BrowserRouter} from "react-router-dom";
+import {BrowserRouter, useNavigate} from "react-router-dom";
 import AppRouter from "./components/AppRouter/AppRouter";
 import axiosAPI from "./api/api.service";
 import '@ant-design/v5-patch-for-react-19';
@@ -16,10 +16,11 @@ export default function App() {
     const [current, setCurrent] = useState<string>("1");
     const [userData, setUserData] = useState<QueueClient | undefined>(undefined);
     const [queues, setQueues] = useState<Queue[]>([]);
-    const [queueData, setQueueData] = useState<Queue>({__v: 0, _id: "", clients: [], name: "", places: []})
+    const [queueData, setQueueData] = useState<Queue>({__v: 0, _id: "", clients: [], name: "", places: []});
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [progress, setProgress] = useState(0);
+    const [isServerHealthy, setIsServerHealthy] = useState<boolean | null>(null);
 
     const [messageService, contextHolder] = message.useMessage();
 
@@ -28,7 +29,7 @@ export default function App() {
     };
 
     useEffect(() => {
-        authProfileGetVerify();
+        checkServerHealth();
     }, []);
 
     useEffect(() => {
@@ -50,6 +51,21 @@ export default function App() {
         }
     }, [isLoading]);
 
+    async function checkServerHealth() {
+        try {
+            const healthStatus = await axiosAPI.checkConnection();
+            if (healthStatus.status === "OK" && healthStatus.database === "Connected") {
+                setIsServerHealthy(true);
+                authProfileGetVerify();
+            } else {
+                setIsServerHealthy(false);
+            }
+        } catch (error) {
+            console.error("Failed to verify server health:", error);
+            setIsServerHealthy(false);
+        }
+    }
+
     async function authProfileGetVerify() {
         const delay =
             (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -69,10 +85,10 @@ export default function App() {
                 console.error("Failed to fetch user data:", userError);
             }
         } catch (profileError) {
+            setIsAuth(false);
             console.error("Failed to verify profile:", profileError);
         }
     }
-
 
     async function getQueues() {
         try {
@@ -86,7 +102,6 @@ export default function App() {
     async function getQueueData(queueId: string) {
         try {
             const fetchedQueueData = await axiosAPI.findQueueById(queueId);
-            console.log(fetchedQueueData);
             setQueueData((prevData) =>
                 JSON.stringify(prevData) !== JSON.stringify(fetchedQueueData) ? fetchedQueueData : prevData
             );
@@ -124,24 +139,38 @@ export default function App() {
             >
                 {contextHolder}
                 <BrowserRouter>
-                    {isLoading ?
-                        <Layout style={{minHeight: "100vh"}}
-                                className={`loading ${progress === 100 ? 'fade-out' : ''}`}
-                        >
-                            <Sider collapsible/>
-                            <SiteLayout toggleTheme={toggleTheme} isDarkMode={isDarkMode}
-                                        pages={<Progress type="circle" percent={progress}/>}/>
-                        </Layout> :
-                        <Layout style={{minHeight: '100vh'}}
-                                className='loading fade-in'
-                        >
-                            <SiderBar/>
-                            <SiteLayout toggleTheme={toggleTheme} isDarkMode={isDarkMode}
-                                        pages={<AppRouter/>}/>
+                    {isServerHealthy === false ? (
+                        <Layout style={{
+                            minHeight: "100vh",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center"
+                        }}>
+                            <Alert
+                                message="Server is Down"
+                                description="The server is currently unavailable. Please try again later."
+                                type="error"
+                                showIcon
+                            />
                         </Layout>
-                    }
+                    ) : isLoading ? (
+                        <Layout style={{minHeight: "100vh"}}
+                                className={`loading ${progress === 100 ? 'fade-out' : ''}`}>
+                            <Sider collapsible/>
+                            <SiteLayout
+                                toggleTheme={toggleTheme}
+                                isDarkMode={isDarkMode}
+                                pages={<Progress type="circle" percent={progress}/>}
+                            />
+                        </Layout>
+                    ) : (
+                        <Layout style={{minHeight: "100vh"}} className="loading fade-in">
+                            <SiderBar/>
+                            <SiteLayout toggleTheme={toggleTheme} isDarkMode={isDarkMode} pages={<AppRouter/>}/>
+                        </Layout>
+                    )}
                 </BrowserRouter>
             </AuthContext.Provider>
-        </ ConfigProvider>
+        </ConfigProvider>
     );
 }

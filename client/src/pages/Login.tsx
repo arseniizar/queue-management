@@ -38,7 +38,7 @@ const Login = () => {
         } catch (error: any) {
             messageService.open({
                 type: "error",
-                content: error.response?.data?.message || "Login failed",
+                content: "Login failed",
             });
         }
     };
