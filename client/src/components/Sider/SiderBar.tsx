@@ -13,8 +13,7 @@ import {
 } from "@ant-design/icons";
 import {MenuProps} from "antd";
 import {Layout, Menu} from "antd";
-import {useAuthContext} from "../../context/context";
-import LogoSVG from "../Svgs/LogoSVG";
+import {IAuthContext, useAuthContext} from "../../context/context";
 
 const {Sider} = Layout;
 
@@ -37,7 +36,7 @@ function getItem(
 }
 
 const SiderBar: React.FC = () => {
-    const {isAuth, setIsAuth, current, setCurrent, axiosAPI}: any =
+    const {isAuth, setIsAuth, current, setCurrent, axiosAPI, authProfileGetVerify, setUserData}: IAuthContext =
         useAuthContext();
     const [collapsed, setCollapsed] = useState(window.innerWidth <= 800);
     const [siderItems, setSiderItems] = useState<MenuItem[] | undefined>(
@@ -49,16 +48,20 @@ const SiderBar: React.FC = () => {
         setCollapsed(window.innerWidth <= 800);
     };
 
-    const logout = () => {
-        axiosAPI
-            .logout()
-            .then(() => {
-                localStorage.removeItem("AuthToken");
-                setIsAuth(false);
-                navigate(0);
-            })
-            .catch(console.error);
+    const logout = async () => {
+        try {
+            await axiosAPI.logout();
+            localStorage.removeItem("AuthToken");
+            setIsAuth(false);
+            setUserData(undefined);
+            console.log("Successfully logged out.");
+        } catch (error) {
+            console.error("Error during logout:", error);
+        } finally {
+            await authProfileGetVerify();
+        }
     };
+    ``
 
     useEffect(() => {
         const items: MenuItem[] = [
@@ -112,9 +115,6 @@ const SiderBar: React.FC = () => {
             collapsed={collapsed}
             onCollapse={(value) => setCollapsed(value)}
         >
-            <header className="sider-header">
-                <LogoSVG/>
-            </header>
             <Menu
                 theme="dark"
                 mode="inline"

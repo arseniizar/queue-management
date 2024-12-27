@@ -10,13 +10,14 @@ export interface IAuthContext {
     axiosAPI: AxiosAPIInstance;
     current: string;
     setCurrent: React.Dispatch<React.SetStateAction<string>>;
-    userData: QueueClient;
+    userData: QueueClient | undefined;
     setUserData: React.Dispatch<React.SetStateAction<QueueClient | undefined>>;
     authProfileGetVerify: () => Promise<void>;
+    isLoading: boolean;
     queues: Queue[];
     getQueues: () => Promise<void>;
-    queueData?: Queue;
-    setQueueData: React.Dispatch<React.SetStateAction<Queue | undefined>>;
+    queueData: Queue;
+    setQueueData: React.Dispatch<React.SetStateAction<Queue>>;
     getQueueData: (queueId: string) => Promise<void>;
 }
 

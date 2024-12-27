@@ -19,11 +19,7 @@ const PlaceCreationModalForm: React.FC<ModalFormProps> = ({
                                                               onCancel,
                                                               useResetFormOnCloseModal,
                                                           }) => {
-    const {
-        axiosAPI,
-        getQueueData,
-        messageService,
-    } = useAuthContext();
+    const {axiosAPI, getQueueData, messageService} = useAuthContext();
 
     const [searchParams] = useSearchParams();
     const [form] = Form.useForm();
@@ -57,14 +53,22 @@ const PlaceCreationModalForm: React.FC<ModalFormProps> = ({
         };
 
         try {
+            // Call the backend API to create the place
             await axiosAPI.createPlaceInQueue(place);
+
+            // Refresh queue data after successful creation
             await getQueueData(queueId);
+
             messageService.open({
                 type: "success",
                 content: "Place created successfully!",
             });
+
+            // Reset the form fields
             form.resetFields();
         } catch (error: any) {
+            console.error("Error creating place:", error.response || error);
+
             messageService.open({
                 type: "error",
                 content: error.response?.data?.message || "Failed to create place.",

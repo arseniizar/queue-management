@@ -9,43 +9,27 @@ import axiosAPI from "./api/api.service";
 import '@ant-design/v5-patch-for-react-19';
 import {QueueClient, Queue} from "./interfaces";
 
+const {Sider} = Layout;
 
 export default function App() {
     const [isAuth, setIsAuth] = useState<boolean>(false);
     const [current, setCurrent] = useState<string>("1");
-    const [userData, setUserData] = useState<QueueClient>();
+    const [userData, setUserData] = useState<QueueClient | undefined>(undefined);
     const [queues, setQueues] = useState<Queue[]>([]);
-    const [queueData, setQueueData] = useState<Queue>()
+    const [queueData, setQueueData] = useState<Queue>({__v: 0, _id: "", clients: [], name: "", places: []})
     const [isDarkMode, setIsDarkMode] = useState(false);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
     const [progress, setProgress] = useState(0);
 
     const [messageService, contextHolder] = message.useMessage();
-
-    const emptyUser: QueueClient = {
-        appointment: {place: "", time: ""},
-        approved: false,
-        cancelled: false,
-        email: "",
-        key: "",
-        password: "",
-        phone: "",
-        processed: false,
-        refreshToken: "",
-        roles: "",
-        username: "",
-        __v: 0,
-        _id: ""
-    };
 
     const toggleTheme = () => {
         setIsDarkMode((prev) => !prev);
     };
 
     useEffect(() => {
-        setIsLoading(true);
-        authProfileGetVerify().then(r => null);
-    }, [isAuth]);
+        authProfileGetVerify();
+    }, []);
 
     useEffect(() => {
         if (isLoading) {
@@ -67,47 +51,48 @@ export default function App() {
     }, [isLoading]);
 
     async function authProfileGetVerify() {
+        const delay =
+            (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
         const token = localStorage.getItem("AuthToken");
-        if (token) {
-            axiosAPI
-                .getProfile()
-                .then((response: any) => {
-                    setIsAuth(true);
-                    axiosAPI
-                        .getUser(response.data.username)
-                        .then((response: any) => {
-                            setUserData(response.data);
-                        })
-                        .catch((error) => {
-                            console.log(error);
-                        });
-                })
-                .catch((error: any) => {
-                    console.log(error);
-                });
+        if (!token) {
+            return;
+        }
+
+        try {
+            await delay(2000);
+            const profileResponse = await axiosAPI.getProfile();
+            setIsAuth(true);
+            try {
+                const userResponse: QueueClient = await axiosAPI.getUser(profileResponse.username);
+                setUserData(userResponse);
+            } catch (userError) {
+                console.error("Failed to fetch user data:", userError);
+            }
+        } catch (profileError) {
+            console.error("Failed to verify profile:", profileError);
         }
     }
 
+
     async function getQueues() {
-        axiosAPI
-            .getQueues()
-            .then((response: any) => {
-                setQueues(response.data);
-            })
-            .catch((error: any) => {
-                console.log(error);
-            });
+        try {
+            const queues = await axiosAPI.getQueues();
+            setQueues(queues);
+        } catch (error) {
+            console.error("Failed to fetch queues:", error);
+        }
     }
 
     async function getQueueData(queueId: string) {
-        axiosAPI
-            .findQueueById(queueId)
-            .then((response: any) => {
-                setQueueData(response.data);
-            })
-            .catch((error: any) => {
-                console.log(error);
-            });
+        try {
+            const fetchedQueueData = await axiosAPI.findQueueById(queueId);
+            console.log(fetchedQueueData);
+            setQueueData((prevData) =>
+                JSON.stringify(prevData) !== JSON.stringify(fetchedQueueData) ? fetchedQueueData : prevData
+            );
+        } catch (error) {
+            console.error("Failed to fetch queue data:", error);
+        }
     }
 
     return (
@@ -126,8 +111,9 @@ export default function App() {
                     axiosAPI,
                     current,
                     setCurrent,
-                    userData: userData || emptyUser,
+                    userData: userData || undefined,
                     setUserData,
+                    isLoading,
                     authProfileGetVerify,
                     queues,
                     getQueues,
@@ -138,16 +124,22 @@ export default function App() {
             >
                 {contextHolder}
                 <BrowserRouter>
-                    <Layout style={{minHeight: "100vh"}}>
-                        <SiderBar/>
-                        {isLoading ?
+                    {isLoading ?
+                        <Layout style={{minHeight: "100vh"}}
+                                className={`loading ${progress === 100 ? 'fade-out' : ''}`}
+                        >
+                            <Sider collapsible/>
                             <SiteLayout toggleTheme={toggleTheme} isDarkMode={isDarkMode}
-                                        className={`loading ${progress === 100 ? 'fade-out' : ''}`}
-                                        pages={<Progress type="circle" percent={progress}/>}/> :
-                            <SiteLayout toggleTheme={toggleTheme} isDarkMode={isDarkMode} className='loading fade-in'
+                                        pages={<Progress type="circle" percent={progress}/>}/>
+                        </Layout> :
+                        <Layout style={{minHeight: '100vh'}}
+                                className='loading fade-in'
+                        >
+                            <SiderBar/>
+                            <SiteLayout toggleTheme={toggleTheme} isDarkMode={isDarkMode}
                                         pages={<AppRouter/>}/>
-                        }
-                    </Layout>
+                        </Layout>
+                    }
                 </BrowserRouter>
             </AuthContext.Provider>
         </ ConfigProvider>

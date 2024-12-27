@@ -1,14 +1,15 @@
 import React, {useEffect, useState, FormEvent} from "react";
 import {AuthContext, IAuthContext, useAuthContext} from "../context/context";
 import {Link, useNavigate} from "react-router-dom";
-import {Button, Checkbox, Form, Input} from "antd";
+import {Button, Checkbox, Form, Input, Typography} from "antd";
 import {LockOutlined, UserOutlined} from "@ant-design/icons";
 import "./pages.scss";
+import SubmitButton from "../components/SubmitButton/SubmitButton";
 
 const Login = () => {
-    const {messageService, axiosAPI, setIsAuth, setCurrent}: IAuthContext =
+    const {messageService, axiosAPI, setIsAuth, setCurrent, authProfileGetVerify}: IAuthContext =
         useAuthContext();
-    const navigate = useNavigate();
+    const [form] = Form.useForm();
 
     useEffect(() => {
         setCurrent("login");
@@ -22,28 +23,24 @@ const Login = () => {
         });
     };
 
-    const onFinish = (values: any) => {
+    const onFinish = async (values: any) => {
         const user = {username: values.username, password: values.password};
-        if (!user.password || !user.username) {
-            return;
-        }
-        axiosAPI
-            .login(user)
-            .then((response: any) => {
-                console.log(response);
-                messageService.open({
-                    type: "success",
-                    content: "Success",
-                });
-                setIsAuth(true);
-            })
-            .catch((error: any) => {
-                messageService.open({
-                    type: "error",
-                    content: error.response.data.message,
-                });
-                console.log(error);
+        if (!user.password || !user.username) return;
+
+        try {
+            const response = await axiosAPI.login(user);
+            localStorage.setItem("AuthToken", response.accessToken);
+            await authProfileGetVerify();
+            messageService.open({
+                type: "success",
+                content: "Login successful",
             });
+        } catch (error: any) {
+            messageService.open({
+                type: "error",
+                content: error.response?.data?.message || "Login failed",
+            });
+        }
     };
 
     return (
@@ -53,6 +50,7 @@ const Login = () => {
             initialValues={{remember: true}}
             onFinish={onFinish}
             onFinishFailed={onFinishFailed}
+            form={form}
         >
             <Form.Item
                 name="username"
@@ -77,9 +75,7 @@ const Login = () => {
                 <Link to="/forgot-password">Forgot password</Link>
             </Form.Item>
             <Form.Item>
-                <Button type="primary" htmlType="submit" className="login-form-button">
-                    Log in
-                </Button>
+                <SubmitButton form={form}>Log in</SubmitButton>
                 Or <Link to="/registration">register now!</Link>
             </Form.Item>
         </Form>

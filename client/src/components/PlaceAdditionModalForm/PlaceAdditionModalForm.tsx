@@ -19,12 +19,7 @@ const PlaceAdditionModalForm: React.FC<ModalFormProps> = ({
                                                               onCancel,
                                                               useResetFormOnCloseModal,
                                                           }) => {
-    const {
-        axiosAPI,
-        getQueueData,
-        messageService,
-    } = useAuthContext();
-
+    const {axiosAPI, getQueueData, messageService} = useAuthContext();
     const [searchParams] = useSearchParams();
     const [form] = Form.useForm();
     const queueId = searchParams.get("queue");
@@ -53,6 +48,7 @@ const PlaceAdditionModalForm: React.FC<ModalFormProps> = ({
         };
 
         try {
+            console.log("Sending additionData:", additionData); // Debug log
             await axiosAPI.addPlaceToQueue(additionData);
             await getQueueData(queueId);
             messageService.open({
@@ -61,7 +57,7 @@ const PlaceAdditionModalForm: React.FC<ModalFormProps> = ({
             });
             form.resetFields();
         } catch (error: any) {
-            console.error(error);
+            console.error("Error adding place:", error.response || error);
             messageService.open({
                 type: "error",
                 content: error.response?.data?.message || "Failed to add place.",
@@ -88,6 +84,7 @@ const PlaceAdditionModalForm: React.FC<ModalFormProps> = ({
                     label="Username"
                     rules={[
                         {required: true, message: "Please input the username."},
+                        {pattern: /^[a-zA-Z0-9_]+$/, message: "Invalid username format."},
                     ]}
                 >
                     <Input placeholder="Enter username"/>

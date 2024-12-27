@@ -3,23 +3,22 @@ export interface Appointment {
     time: string;
 }
 
-export interface QueueClient {
-    appointment: Appointment;
-    approved: boolean;
-    cancelled: boolean;
-    email: string;
-    key: string;
-    password: string;
-    phone: string;
-    processed: boolean;
-    refreshToken: string;
-    roles: string;
+export interface QueueEntity {
     username: string;
-    __v: 0;
-    _id: string;
+    email: string;
+    phone: string;
+    queueId: string;
+    roles: string;
+    userId: string;
 }
 
-export interface QueuePlace extends QueueClient {
+export interface QueuePlace extends QueueEntity {}
+
+export interface QueueClient extends QueueEntity {
+    appointment: Appointment | null;
+    approved: boolean;
+    cancelled: boolean;
+    processed: boolean;
 }
 
 export interface Queue {
@@ -53,4 +52,11 @@ export interface UserDeletion {
 }
 
 export interface PlaceAddition {
+}
+
+export interface ProfileResponse {
+    exp: number;      // Token expiration timestamp (Unix epoch)
+    iat: number;      // Token issued at timestamp (Unix epoch)
+    sub: string;      // User ID
+    username: string; // Username of the user
 }

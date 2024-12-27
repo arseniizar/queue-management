@@ -1,4 +1,4 @@
-import {Cascader, Form, Input, Modal} from "antd";
+import {Cascader, Form, Modal} from "antd";
 import React, {useEffect, useState} from "react";
 import {useAuthContext} from "../../context/context";
 import {useSearchParams} from "react-router-dom";
@@ -14,11 +14,12 @@ interface Option {
     children?: Option[];
 }
 
-const ClientAdditionModalForm: React.FC<{
+const StepInQueueModalForm: React.FC<{
     open: boolean;
     onCancel: () => void;
     useResetFormOnCloseModal: (props: UseResetFormOnCloseModalProps) => void;
-}> = ({open, onCancel, useResetFormOnCloseModal}) => {
+    username?: string;
+}> = ({open, onCancel, useResetFormOnCloseModal, username}) => {
     const {axiosAPI, queueData, getQueueData, messageService} = useAuthContext();
     const [form] = Form.useForm();
     const [searchParams] = useSearchParams();
@@ -45,14 +46,15 @@ const ClientAdditionModalForm: React.FC<{
         };
 
         fetchQueueData();
-    }, [queueId]);
+    }, [queueId, getQueueData]);
 
     useEffect(() => {
-        if (queueData?.places) {
-            const cascaderOptions = queueData.places.map((place: any) => ({
-                value: place.userId,
-                label: place.username,
-            })) || [];
+        if (queueData.places) {
+            const cascaderOptions =
+                queueData.places.map((place: any) => ({
+                    value: place.userId,
+                    label: place.username,
+                })) || [];
             setOptions(cascaderOptions);
         }
     }, [queueData.places]);
@@ -67,49 +69,45 @@ const ClientAdditionModalForm: React.FC<{
     };
 
     const onFinish = async (values: any) => {
-        if (!queueId) {
-            messageService.open({type: "error", content: "Queue ID is missing or invalid."});
+        if (!queueId || !username) {
+            messageService.open({type: "error", content: "Queue ID or username is missing or invalid."});
             return;
         }
 
-        const clientData = {
-            username: values.username,
-            queueId,
-            appointment: {
-                place: values.place[0],
-                time: new Date().toISOString(),
-            },
+        const appointment = {
+            time: new Date().toISOString(),
+            place: values.place[0],
         };
 
         try {
-            await axiosAPI.addClientToQueue(clientData.queueId, clientData.username, {
-                time: clientData.appointment.time,
-                place: clientData.appointment.place,
-            });
+            console.log("Adding client to queue with data:", {queueId, username, appointment});
+
+            await axiosAPI.addClientToQueue(queueId, username, appointment);
+
             await getQueueData(queueId);
-            messageService.open({type: "success", content: "Client added successfully!"});
+            messageService.open({type: "success", content: "Client stepped into queue successfully!"});
+
+            // Reset form and close the modal
             form.resetFields();
+            onCancel();
         } catch (error: any) {
             console.error(error);
             messageService.open({
                 type: "error",
-                content: error.response?.data?.message || "Failed to add client.",
+                content: error.response?.data?.message || "Failed to step client into queue.",
             });
         }
     };
 
     return (
         <Modal
-            title="Add Client to Queue"
+            title="Step Client into Queue"
             open={open}
             onOk={onOk}
             onCancel={onCancel}
             destroyOnClose
         >
-            <Form form={form} layout="vertical" name="clientForm" onFinish={onFinish}>
-                <Form.Item name="username" label="Username" rules={[{required: true}]}>
-                    <Input placeholder="Enter username"/>
-                </Form.Item>
+            <Form form={form} layout="vertical" name="stepInQueueForm" onFinish={onFinish}>
                 <Form.Item
                     name="place"
                     label="Place"
@@ -122,4 +120,4 @@ const ClientAdditionModalForm: React.FC<{
     );
 };
 
-export default ClientAdditionModalForm;
+export default StepInQueueModalForm;

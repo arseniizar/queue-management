@@ -1,0 +1,88 @@
+import React, {useEffect, useState} from "react";
+import {Button, Card, Typography} from "antd";
+import "./WelcomeComponent.scss";
+
+const {Title} = Typography;
+
+const generateName = (index: number) => {
+    const names = ["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace"];
+    return names[index % names.length];
+};
+
+const WelcomeComponent: React.FC = () => {
+    const [queue, setQueue] = useState<{ id: number; name: string; className: string }[]>([
+        {id: 1, name: "Alice", className: "entering"},
+        {id: 2, name: "Bob", className: "entering"},
+        {id: 3, name: "Charlie", className: "entering"},
+        {id: 4, name: "Diana", className: "entering"},
+    ]);
+    const [isQueueVisible, setIsQueueVisible] = useState<boolean>(false);
+
+    useEffect(() => {
+        const initializeQueue = setTimeout(() => {
+            setQueue((prevQueue) =>
+                prevQueue.map((item) => ({...item, className: "moving"}))
+            );
+        }, 50);
+
+        let index = 5;
+        const interval = setInterval(() => {
+            setQueue((prevQueue) => {
+                const newBall = {id: index++, name: generateName(index), className: "entering"};
+
+                const updatedQueue = [
+                    newBall,
+                    ...prevQueue.map((item) => ({...item, className: "moving"})),
+                ];
+
+                setIsQueueVisible(true);
+
+                setTimeout(() => {
+                    setQueue((currentQueue) =>
+                        currentQueue.map((item, idx) =>
+                            idx === currentQueue.length - 1
+                                ? {...item, className: "exiting"}
+                                : item
+                        )
+                    );
+                }, 1500);
+
+                setTimeout(() => {
+                    setQueue((currentQueue) => currentQueue.slice(0, -1));
+                }, 2200);
+
+                return updatedQueue;
+            });
+        }, 2200);
+
+        return () => {
+            clearInterval(interval);
+            clearTimeout(initializeQueue);
+        };
+    }, []);
+
+    return (
+        <div className="welcome-container">
+            <div className="queue-animation-wrapper">
+                <div className={`queue-animation ${!isQueueVisible ? "hidden" : ""}`}>
+                    {queue.map((item) => (
+                        <div
+                            key={item.id}
+                            className={`queue-ball ${item.className}`}
+                        >
+                            {item.name}
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <Card className="welcome-card" bordered={false}>
+                <Title level={2}>Welcome to Queue Manager!</Title>
+                <Button type="primary" size="large">
+                    Get Started
+                </Button>
+            </Card>
+        </div>
+    );
+};
+
+export default WelcomeComponent;

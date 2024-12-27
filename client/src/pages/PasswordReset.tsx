@@ -28,7 +28,7 @@ const PasswordReset = () => {
         }
 
         axiosAPI
-            .resetPassword(data.token)
+            .resetPassword(data.token, data.password)
             .then((response: any) => {
                 messageService.open({
                     type: "success",
