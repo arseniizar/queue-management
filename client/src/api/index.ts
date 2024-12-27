@@ -28,6 +28,11 @@ const API_ENDPOINTS = {
     HEALTH: {
         CHECK: "/health-check",
     },
+    TIMETABLES: {
+        FIND_SCHEDULE: "/timetables/find-schedule",
+        APPOINT: "/timetables/appoint",
+        CREATE_TIMETABLE: "/timetables/create",
+    },
 };
 
 export default API_ENDPOINTS;

@@ -16,7 +16,7 @@ import {ThrottleConfig} from "@/constants";
 import {User} from "@/schemas/user.schema";
 
 @Controller("queues")
-@UseGuards(AccessTokenGuard) // Apply globally to all endpoints
+@UseGuards(AccessTokenGuard)
 export class QueueController {
     constructor(private readonly queueService: QueueService) {
     }
@@ -82,7 +82,7 @@ export class QueueController {
     }
 
     @Throttle(ThrottleConfig.DELETE_QUEUE)
-    @Roles(Role.Admin) // Only admin can delete a queue
+    @Roles(Role.Admin)
     @UseGuards(RolesGuard)
     @Patch("delete-queue")
     async removeQueue(@Body(DataTransformationPipe) queueDeleteDto: QueueDeleteDto) {

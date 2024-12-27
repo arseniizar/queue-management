@@ -8,8 +8,15 @@ import AppRouter from "./components/AppRouter/AppRouter";
 import axiosAPI from "./api/api.service";
 import '@ant-design/v5-patch-for-react-19';
 import {QueueClient, Queue} from "./interfaces";
+import {useDebouncedMessage} from "./debouncedMessage/debouncedMessage";
+import DebouncedButton from "./components/Buttons/DebouncedButton";
 
 const {Sider} = Layout;
+
+const Button = DebouncedButton;
+
+export { Button };
+
 
 export default function App() {
     const [isAuth, setIsAuth] = useState<boolean>(false);
@@ -22,7 +29,7 @@ export default function App() {
     const [progress, setProgress] = useState(0);
     const [isServerHealthy, setIsServerHealthy] = useState<boolean | null>(null);
 
-    const [messageService, contextHolder] = message.useMessage();
+    const [messageService, contextHolder] = useDebouncedMessage();
 
     const toggleTheme = () => {
         setIsDarkMode((prev) => !prev);

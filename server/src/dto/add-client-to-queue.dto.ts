@@ -1,8 +1,8 @@
 import { IsNotEmpty } from "class-validator";
 
-interface Appointment {
+export interface ClientAppointment {
   place: string;
-  time: Date;
+  time: string;
 }
 
 export class AddClientToQueueDto {
@@ -13,5 +13,5 @@ export class AddClientToQueueDto {
   queueId: string;
 
   @IsNotEmpty()
-  appointment: Appointment | null;
+  appointment: ClientAppointment | null;
 }

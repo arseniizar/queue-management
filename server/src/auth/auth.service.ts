@@ -1,4 +1,4 @@
-import {ForbiddenException, HttpException, HttpStatus, Injectable,} from '@nestjs/common';
+import {BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable,} from '@nestjs/common';
 import {UsersService} from '@/users/users.service';
 import {JwtService} from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -69,16 +69,37 @@ export class AuthService {
     async employ(username: string) {
         const user = await this.usersService.findOne(username);
         if (!user) throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
+
         const employeeRole = await this.rolesService.findRoles({name: 'employee'});
         const employee = await this.usersService.findOneAndUpdate(user._id, {
             roles: employeeRole?._id,
         });
+
+        const today = new Date();
+
+        const formattedSchedule = ['12:00', '13:00', '15:00'].map((timeString) => {
+            const [hours, minutes] = timeString.split(':').map(Number);
+            if (isNaN(hours) || isNaN(minutes)) {
+                throw new BadRequestException(`Invalid time format: ${timeString}`);
+            }
+
+            return new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                today.getDate(),
+                hours,
+                minutes
+            ).toISOString();
+        });
+
         await this.timetableService.create({
             placeId: user._id.toString(),
-            schedule: ['12:00', '13:00', '15:00'],
+            schedule: formattedSchedule,
         });
+
         return employee;
     }
+
 
     async makeAdmin(username: string) {
         const user = await this.usersService.findOne(username);

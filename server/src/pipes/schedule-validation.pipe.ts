@@ -10,10 +10,9 @@ export class ScheduleValidationPipe implements PipeTransform {
         const date = new Date(value.time);
 
         if (isNaN(date.getTime())) {
-            throw new BadRequestException("Invalid time format. Please provide a valid date string or time.");
+            throw new BadRequestException("Invalid time format. Please provide a valid ISO 8601 date string.");
         }
 
-        console.log("Validated Date:", date);
-        return {...value, time: date};
+        return {...value, time: date.toISOString()};
     }
 }

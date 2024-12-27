@@ -1,4 +1,4 @@
-import {Cascader, Form, Input, Modal} from "antd";
+import {Cascader, Form, Input, Modal, Select} from "antd";
 import React, {useEffect, useState} from "react";
 import {useAuthContext} from "../../context/context";
 import {useSearchParams} from "react-router-dom";
@@ -25,6 +25,8 @@ const ClientAdditionModalForm: React.FC<{
     const queueId = searchParams.get("queue");
     const [loading, setLoading] = useState<boolean>(false);
     const [options, setOptions] = useState<Option[]>([]);
+    const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+    const [isPlaceSelected, setIsPlaceSelected] = useState<boolean>(false);
 
     useEffect(() => {
         if (!queueId) {
@@ -57,6 +59,34 @@ const ClientAdditionModalForm: React.FC<{
         }
     }, [queueData.places]);
 
+    const fetchAvailableTimes = async (placeId: string) => {
+        try {
+            const times = await axiosAPI.getAvailableTimes(placeId);
+            setAvailableTimes(times);
+        } catch (error) {
+            messageService.open({type: "error", content: "Failed to fetch available times."});
+        }
+    };
+
+    const onPlaceChange = (value: (string | number)[]) => {
+        const selectedPlace = value[value.length - 1] as string;
+        if (selectedPlace) {
+            setIsPlaceSelected(true);
+            fetchAvailableTimes(selectedPlace);
+        } else {
+            setIsPlaceSelected(false);
+            setAvailableTimes([]);
+        }
+    };
+
+    const handleCancel = () => {
+        form.resetFields();
+        setOptions([]);
+        setAvailableTimes([]);
+        setIsPlaceSelected(false);
+        onCancel();
+    };
+
     useResetFormOnCloseModal({
         form,
         open,
@@ -75,25 +105,28 @@ const ClientAdditionModalForm: React.FC<{
         const clientData = {
             username: values.username,
             queueId,
-            appointment: {
-                place: values.place[0],
-                time: new Date().toISOString(),
-            },
+            time: values.time,
+            place: Array.isArray(values.place) ? values.place[0] : values.place,
         };
 
         try {
+            await axiosAPI.appoint({
+                clientUsername: clientData.username,
+                time: clientData.time,
+                placeId: clientData.place,
+            });
             await axiosAPI.addClientToQueue(clientData.queueId, clientData.username, {
-                time: clientData.appointment.time,
-                place: clientData.appointment.place,
+                time: clientData.time,
+                place: clientData.place,
             });
             await getQueueData(queueId);
             messageService.open({type: "success", content: "Client added successfully!"});
-            form.resetFields();
+            handleCancel(); // Close the modal and reset state
         } catch (error: any) {
             console.error(error);
             messageService.open({
                 type: "error",
-                content: error.response?.data?.message || "Failed to add client.",
+                content: "Failed to add client.",
             });
         }
     };
@@ -103,7 +136,7 @@ const ClientAdditionModalForm: React.FC<{
             title="Add Client to Queue"
             open={open}
             onOk={onOk}
-            onCancel={onCancel}
+            onCancel={handleCancel} // Use custom cancel logic
             destroyOnClose
         >
             <Form form={form} layout="vertical" name="clientForm" onFinish={onFinish}>
@@ -115,7 +148,25 @@ const ClientAdditionModalForm: React.FC<{
                     label="Place"
                     rules={[{required: true, message: "Please select a place."}]}
                 >
-                    <Cascader options={options} placeholder="Choose the place" loading={loading}/>
+                    <Cascader
+                        options={options}
+                        placeholder="Choose the place"
+                        loading={loading}
+                        onChange={onPlaceChange}
+                    />
+                </Form.Item>
+                <Form.Item
+                    name="time"
+                    label="Time"
+                    rules={[{required: true, message: "Please select a time."}]}
+                >
+                    <Select placeholder="Select available time" disabled={!isPlaceSelected} loading={loading}>
+                        {availableTimes.map((time) => (
+                            <Select.Option key={time} value={time}>
+                                {time}
+                            </Select.Option>
+                        ))}
+                    </Select>
                 </Form.Item>
             </Form>
         </Modal>

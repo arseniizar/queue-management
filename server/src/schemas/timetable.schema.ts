@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
 
-interface Appointment {
+export interface TimetableAppointment {
   time: string;
   clientId: string;
 }
@@ -20,7 +20,7 @@ export class Timetable {
     time: String,
     clientId: String,
   })
-  appointments: Appointment[];
+  appointments: TimetableAppointment[];
 }
 
 export const TimeTableSchema = SchemaFactory.createForClass(Timetable);

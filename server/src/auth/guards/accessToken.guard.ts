@@ -1,4 +1,4 @@
-import {Injectable} from '@nestjs/common';
+import {Injectable, UnauthorizedException} from '@nestjs/common';
 import {AuthGuard} from '@nestjs/passport';
 import {ExecutionContext} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
@@ -11,12 +11,20 @@ export class AccessTokenGuard extends AuthGuard('jwt') {
     }
 
     handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-        if (err || info) {
-            throw err || info;
+        if (err) {
+            throw new UnauthorizedException('An error occurred while validating the token.');
         }
 
-        if (!user) {
-            throw new Error('No user found in JWT');
+        if (info?.name === 'TokenExpiredError') {
+            throw new UnauthorizedException('The token has expired. Please log in again.');
+        }
+
+        if (info?.name === 'JsonWebTokenError') {
+            throw new UnauthorizedException('Invalid token. Please log in again.');
+        }
+
+        if (info || !user) {
+            throw new UnauthorizedException('Authentication failed. Please provide a valid token.');
         }
 
         const request = context.switchToHttp().getRequest();

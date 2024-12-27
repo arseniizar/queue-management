@@ -9,7 +9,7 @@ import {
 import {InjectModel} from '@nestjs/mongoose';
 import {Model} from 'mongoose';
 import {AuthService} from 'src/auth/auth.service';
-import {AddClientToQueueDto} from 'src/dto/add-client-to-queue.dto';
+import {AddClientToQueueDto, ClientAppointment} from 'src/dto/add-client-to-queue.dto';
 import {AddPlaceToQueue} from 'src/dto/add-place-to-queue.dto';
 import {QueuePlaceDto} from 'src/dto/queue-place.dto';
 import {QueueDto} from 'src/dto/queue.dto';
@@ -19,6 +19,7 @@ import {Queue, QueueDocument} from 'src/schemas/queue.schema';
 import {UsersService} from 'src/users/users.service';
 import {v4 as uuid} from 'uuid';
 import {UserDocument} from "@/schemas/user.schema";
+import {TimetablesService} from "@/timetables/timetables.service";
 
 interface Place {
     username: string;
@@ -30,16 +31,11 @@ interface Place {
     key: string;
 }
 
-interface Appointment {
-    place: string;
-    time: Date;
-}
-
 interface Client extends Place {
     cancelled: boolean;
     approved: boolean;
     processed: boolean;
-    appointment: Appointment | null;
+    appointment: ClientAppointment | null;
 }
 
 @Injectable()
@@ -49,6 +45,7 @@ export class QueueService {
         private readonly userService: UsersService,
         private readonly authService: AuthService,
         private readonly rolesService: RolesService,
+        private readonly timetablesService: TimetablesService,
     ) {
     }
 
@@ -60,7 +57,6 @@ export class QueueService {
             throw new ForbiddenException("Queue or client doesn't exist.");
         }
 
-        // Guard clause to ensure appointment is not null/undefined
         if (!addClientToQueueDto.appointment) {
             throw new HttpException('Appointment details are required.', HttpStatus.BAD_REQUEST);
         }
@@ -256,12 +252,44 @@ export class QueueService {
             throw new ForbiddenException('Client does not exist.');
         }
 
+        const client = clients[index];
+        const {appointment} = client;
+
+        if (!appointment) {
+            throw new ForbiddenException('Client has no appointment to remove.');
+        }
+
         clients.splice(index, 1);
+
+        const timetable = await this.timetablesService.findOne({
+            placeId: appointment.place,
+        });
+
+        if (!timetable) {
+            throw new ForbiddenException('Timetable for the associated place not found.');
+        }
+
+        const isTimeInAppointments = timetable.appointments.some(
+            (a) => a.time === appointment.time && a.clientId !== userDeleteDto.userId,
+        );
+
+        if (!isTimeInAppointments && !timetable.schedule.includes(appointment.time)) {
+            timetable.schedule.push(appointment.time);
+            timetable.schedule.sort();
+        }
+
+        timetable.appointments = timetable.appointments.filter(
+            (a) => a.clientId !== userDeleteDto.userId,
+        );
+
+        await timetable.save();
+
         const updatedQueue = await this.queueModel.findByIdAndUpdate(
             queue._id,
             {clients},
             {new: true},
         );
+
         return updatedQueue;
     }
 

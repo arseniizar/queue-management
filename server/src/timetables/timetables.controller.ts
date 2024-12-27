@@ -1,4 +1,4 @@
-import {Controller, Post, Body, UseGuards} from "@nestjs/common";
+import {Controller, Post, Body, UseGuards, Get, Param} from "@nestjs/common";
 import {Throttle} from "@nestjs/throttler";
 import {TimetablesService} from "./timetables.service";
 import {DataTransformationPipe} from "@/pipes/data-transformation.pipe";
@@ -11,6 +11,7 @@ import {RolesGuard} from "@/auth/guards/roles.guard";
 import {Roles} from "@/decorators/roles.decorator";
 import {Role} from "@/enums/role.enum";
 import {ThrottleConfig} from "@/constants";
+import {TimetableAppointment} from "@/schemas/timetable.schema";
 
 @Controller("timetables")
 @UseGuards(AccessTokenGuard)
@@ -27,8 +28,6 @@ export class TimetablesController {
     }
 
     @Throttle(ThrottleConfig.APPOINT)
-    @Roles(Role.User)
-    @UseGuards(RolesGuard)
     @Post("appoint")
     async appoint(
         @Body(DataTransformationPipe, ScheduleValidationPipe)
@@ -45,5 +44,22 @@ export class TimetablesController {
         @Body(DataTransformationPipe) createTimetableDto: CreateTimetableDto
     ) {
         return await this.timetablesService.create(createTimetableDto);
+    }
+
+
+    @Throttle(ThrottleConfig.CREATE_TIMETABLE)
+    @Get("appointments/:clientId")
+    async getAppointmentsByClientId(
+        @Param("clientId")
+        clientId: string
+    ):
+        Promise<TimetableAppointment[]> {
+        return this.timetablesService.getAppointmentsByClientId(clientId);
+    }
+
+    @Throttle(ThrottleConfig.CREATE_TIMETABLE)
+    @Get("available-times/:placeId")
+    async getAvailableTimes(@Param("placeId") placeId: string) {
+        return await this.timetablesService.getAvailableTimes(placeId);
     }
 }

@@ -20,9 +20,9 @@ class AxiosAPI {
 
     constructor(private baseURL: string) {
         this.debouncedEndpointPatterns = [
-            new RegExp(`^${API_ENDPOINTS.QUEUES.APPROVE_CLIENT}/.+/.+$`), // Matches: /queues/approve/:clientId/:queueId
-            new RegExp(`^${API_ENDPOINTS.QUEUES.CANCEL_CLIENT}/.+/.+$`), // Matches: /queues/cancel/:clientId/:queueId
-            new RegExp(`^${API_ENDPOINTS.QUEUES.ADD_CLIENT}$`), // Matches: /queues/add-client (exact match)
+            new RegExp(`^${API_ENDPOINTS.QUEUES.APPROVE_CLIENT}/.+/.+$`),
+            new RegExp(`^${API_ENDPOINTS.QUEUES.CANCEL_CLIENT}/.+/.+$`),
+            new RegExp(`^${API_ENDPOINTS.QUEUES.ADD_CLIENT}$`),
         ];
 
         this.axios = axios.create({
@@ -64,40 +64,58 @@ class AxiosAPI {
         this.axios.interceptors.response.use(
             (response) => response,
             async (error) => {
-                const {config, response} = error;
+                const { config, response } = error;
 
-                if (response?.status === 401 && !config._retry) {
-                    if (!isRefreshing) {
-                        isRefreshing = true;
-                        try {
-                            const newToken = await this.refreshToken();
-                            failedQueue.forEach((req) => req.resolve(newToken));
-                            failedQueue = [];
-                        } catch (refreshError) {
-                            failedQueue.forEach((req) => req.reject(refreshError));
-                            failedQueue = [];
-                            this.logoutUser();
-                            throw refreshError;
-                        } finally {
-                            isRefreshing = false;
+                if (response?.status === 401 || response?.status === 403) {
+                    // Handle Unauthorized Error
+                    if (!config._retry) {
+                        config._retry = true;
+
+                        if (!isRefreshing) {
+                            isRefreshing = true;
+                            try {
+                                const newToken = await this.refreshToken();
+                                failedQueue.forEach((req) => req.resolve(newToken));
+                                failedQueue = [];
+                            } catch (refreshError) {
+                                failedQueue.forEach((req) => req.reject(refreshError));
+                                failedQueue = [];
+
+                                try {
+                                    await this.axios.get(API_ENDPOINTS.AUTH.LOGOUT);
+                                } catch (logoutError) {
+                                    console.error('Logout endpoint failed:', logoutError);
+                                } finally {
+                                    this.logoutUser();
+                                    window.location.href = '/login';
+                                }
+                            } finally {
+                                isRefreshing = false;
+                            }
                         }
-                    }
 
-                    return new Promise((resolve, reject) => {
-                        failedQueue.push({
-                            resolve: (token: string) => {
-                                config.headers.Authorization = `Bearer ${token}`;
-                                resolve(this.axios(config));
-                            },
-                            reject: (err: any) => reject(err),
+                        return new Promise((resolve, reject) => {
+                            failedQueue.push({
+                                resolve: (token: string) => {
+                                    config.headers.Authorization = `Bearer ${token}`;
+                                    resolve(this.axios(config));
+                                },
+                                reject: (err: any) => reject(err),
+                            });
                         });
-                    });
+                    } else {
+                        // If retry already occurred, clear local tokens and redirect
+                        this.logoutUser();
+                        window.location.href = '/login';
+                    }
                 }
 
                 return Promise.reject(error);
             }
         );
     }
+
+
 
     private isDebouncedEndpoint(url: string): boolean {
         return this.debouncedEndpointPatterns.some((pattern) => pattern.test(url));
@@ -228,6 +246,27 @@ class AxiosAPI {
             `${API_ENDPOINTS.QUEUES.CANCEL_CLIENT}/${clientId}/${queueId}`,
             {}
         );
+    }
+
+    findSchedule(findScheduleDto: { placeId: string }): Promise<any> {
+        return this.post(API_ENDPOINTS.TIMETABLES.FIND_SCHEDULE, findScheduleDto);
+    }
+
+    appoint(appointDto: {
+        clientUsername: string;
+        placeId: string;
+        time: string;
+    }): Promise<any> {
+        return this.post(API_ENDPOINTS.TIMETABLES.APPOINT, appointDto);
+    }
+
+    createTimetable(createTimetableDto: { placeId: string; schedule: string[]; }): Promise<any> {
+        return this.post(API_ENDPOINTS.TIMETABLES.CREATE_TIMETABLE, createTimetableDto);
+    }
+
+
+    async getAvailableTimes(placeId: string): Promise<string[]> {
+        return this.get<string[]>(`/timetables/available-times/${placeId}`);
     }
 }
 
