@@ -68,23 +68,24 @@ const Guide: React.FC = () => {
                                 boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
                             }}
                         >
-                            <video
-                                src="http://localhost:1234/assets/guide.mp4"
-                                style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: "100%",
-                                    height: "100%",
-                                    borderRadius: "8px",
-                                    border: "none",
-                                }}
-                                onError={() => {
-                                    console.error("Iframe failed to load.");
-                                    alert("The video could not be loaded. Please try again later.");
-                                }}
-                            >
-                            </video>
+
+
+                            <iframe src="https://www.youtube.com/embed/yefKQ_GZhiQ"
+                                    style={{
+                                        position: "absolute",
+                                        top: 0,
+                                        left: 0,
+                                        width: "100%",
+                                        height: "100%",
+                                        borderRadius: "8px",
+                                        border: "none",
+                                    }}
+                                    title="Guide for queue management project" frameBorder="0"
+                                    allow="accelerometer; clipboard-write;
+                                    encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    referrerPolicy="strict-origin-when-cross-origin" allowFullScreen>
+
+                            </iframe>
                         </div>
                     </div>
 
