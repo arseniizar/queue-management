@@ -1,6 +1,6 @@
 import React, {useEffect} from "react";
 import {IAuthContext, useAuthContext} from "../context/context";
-import WelcomeComponent from "../components/Welcome/WelcomeComponent";
+import WelcomeComponent from "../components/welcome/WelcomeComponent";
 
 const Menu = () => {
     const {setCurrent}: IAuthContext = useAuthContext();

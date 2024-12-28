@@ -8,6 +8,7 @@
 .profileForm,
 .queueForm {
   min-width: 26vw;
+  border-radius: 20px;
 }
 
 .submitButtonContainer {
@@ -102,5 +103,6 @@
 .queueFormHeader {
   display: flex;
   justify-content: space-between;
+  height: 7vh;
   margin: 0 7px;
 }

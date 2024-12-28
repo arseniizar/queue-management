@@ -20,6 +20,7 @@ import {UsersService} from 'src/users/users.service';
 import {v4 as uuid} from 'uuid';
 import {UserDocument} from "@/schemas/user.schema";
 import {TimetablesService} from "@/timetables/timetables.service";
+import {getFormattedSchedule} from "@/constants";
 
 interface Place {
     username: string;
@@ -94,7 +95,6 @@ export class QueueService {
         return updatedQueue;
     }
 
-
     async addPlaceToQueue(addPlaceToQueue: AddPlaceToQueue) {
         const user = await this.userService.findOne(addPlaceToQueue.username);
         const queue = await this.queueModel.findById(addPlaceToQueue.queueId).exec();
@@ -125,7 +125,23 @@ export class QueueService {
             'This user already exists in this queue',
         );
 
+        // Add the place to the queue
         places.push(place);
+
+
+        // Check if a timetable already exists for this place
+        const existingTimetable = await this.timetablesService.findOne({
+            placeId: user._id.toString(),
+        });
+
+        if (!existingTimetable) {
+            // Create a default timetable if it doesn't exist
+            await this.timetablesService.create({
+                placeId: user._id.toString(),
+                schedule: getFormattedSchedule(['09:00', '12:00', '18:00']),
+            });
+        }
+
         const updatedQueue = await this.queueModel.findByIdAndUpdate(
             queue._id,
             {places},
@@ -133,6 +149,7 @@ export class QueueService {
         );
         return updatedQueue;
     }
+
 
     async createQueue(queueDto: QueueDto): Promise<QueueDocument> {
         const isQueueExists = await this.queueModel.exists({name: queueDto.name}).exec();
@@ -216,8 +233,20 @@ export class QueueService {
     }
 
     async deleteQueue(id: string) {
+        const queue = await this.queueModel.findById(id).exec();
+        if (!queue) {
+            throw new ForbiddenException("Queue doesn't exist.");
+        }
+
+        const places = queue.places as Place[];
+
+        for (const place of places) {
+            await this.deletePlace({userId: place.userId, queueId: id});
+        }
+
         return this.queueModel.findByIdAndDelete(id).exec();
     }
+
 
     async deletePlace(userDeleteDto: UserDeleteDto) {
         const queue = await this.queueModel.findById(userDeleteDto.queueId).exec();
@@ -231,12 +260,22 @@ export class QueueService {
             throw new ForbiddenException('Place does not exist.');
         }
 
-        places.splice(index, 1);
+        const removedPlace = places.splice(index, 1)[0];
+
+        const clients = queue.clients as Client[];
+        const updatedClients = clients.filter((client) => client.appointment?.place !== userDeleteDto.userId);
+
+        const timetable = await this.timetablesService.findOne({placeId: userDeleteDto.userId});
+        if (timetable) {
+            await this.timetablesService.delete(userDeleteDto.userId);
+        }
+
         const updatedQueue = await this.queueModel.findByIdAndUpdate(
             queue._id,
-            {places},
+            {places, clients: updatedClients},
             {new: true},
         );
+
         return updatedQueue;
     }
 

@@ -4,26 +4,29 @@ import {
     Place,
     PlaceAddition,
     ProfileResponse,
-    Queue,
-    QueueClient,
+    Queue, QueueClient,
     User,
     UserDeletion,
     UserLogin,
 } from "../interfaces";
 import API_ENDPOINTS from ".";
+import React from "react";
 
 class AxiosAPI {
     private readonly axios: AxiosInstance;
     private requestTimestamps: Map<string, number> = new Map();
     private debounceTime: number = 1000;
     private debouncedEndpointPatterns: RegExp[];
+    private readonly setIsAuth: React.Dispatch<React.SetStateAction<boolean>>;
 
-    constructor(private baseURL: string) {
+    constructor(private baseURL: string, setIsAuth: React.Dispatch<React.SetStateAction<boolean>>) {
         this.debouncedEndpointPatterns = [
             new RegExp(`^${API_ENDPOINTS.QUEUES.APPROVE_CLIENT}/.+/.+$`),
             new RegExp(`^${API_ENDPOINTS.QUEUES.CANCEL_CLIENT}/.+/.+$`),
             new RegExp(`^${API_ENDPOINTS.QUEUES.ADD_CLIENT}$`),
         ];
+
+        this.setIsAuth = setIsAuth;
 
         this.axios = axios.create({
             baseURL,
@@ -64,7 +67,7 @@ class AxiosAPI {
         this.axios.interceptors.response.use(
             (response) => response,
             async (error) => {
-                const { config, response } = error;
+                const {config, response} = error;
 
                 if (response?.status === 401 || response?.status === 403) {
                     // Handle Unauthorized Error
@@ -116,7 +119,6 @@ class AxiosAPI {
     }
 
 
-
     private isDebouncedEndpoint(url: string): boolean {
         return this.debouncedEndpointPatterns.some((pattern) => pattern.test(url));
     }
@@ -136,6 +138,7 @@ class AxiosAPI {
     logoutUser(): void {
         localStorage.removeItem("AuthToken");
         localStorage.removeItem("RefreshToken");
+        this.setIsAuth(false);
     }
 
     async login(user: UserLogin): Promise<{ accessToken: string; refreshToken: string }> {
@@ -171,7 +174,9 @@ class AxiosAPI {
     }
 
     logout(): Promise<void> {
-        return this.get<void>(API_ENDPOINTS.AUTH.LOGOUT);
+        const promise = this.get<void>(API_ENDPOINTS.AUTH.LOGOUT);
+        this.logoutUser();
+        return promise;
     }
 
     getProfile(): Promise<ProfileResponse> {
@@ -270,7 +275,4 @@ class AxiosAPI {
     }
 }
 
-const axiosAPI = new AxiosAPI(process.env.REACT_APP_API_URL || "http://localhost:3000");
-
-export type AxiosAPIInstance = typeof axiosAPI;
-export default axiosAPI;
+export default AxiosAPI;

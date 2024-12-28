@@ -1,35 +1,25 @@
 import React, {useEffect, useState} from "react";
 import {Layout, message, ConfigProvider, theme, Progress, Alert} from "antd";
-import SiderBar from "./components/Sider/SiderBar";
-import SiteLayout from "./components/SiteLayout/SiteLayout";
-import {AuthContext, IAuthContext} from "./context/context";
+import NavigationBar from "./components/sider/NavigationBar";
+import SiteLayout from "./components/siteLayout/SiteLayout";
+import {IAuthContext, useAuthContext} from "./context/context";
 import {BrowserRouter, useNavigate} from "react-router-dom";
-import AppRouter from "./components/AppRouter/AppRouter";
-import axiosAPI from "./api/api.service";
+import AppRouter from "./components/appRouter/AppRouter";
 import '@ant-design/v5-patch-for-react-19';
-import {QueueClient, Queue} from "./interfaces";
-import {useDebouncedMessage} from "./debouncedMessage/debouncedMessage";
-import DebouncedButton from "./components/Buttons/DebouncedButton";
+import DebouncedButton from "./components/buttons/DebouncedButton";
 
 const {Sider} = Layout;
 
 const Button = DebouncedButton;
 
-export { Button };
-
+export {Button};
 
 export default function App() {
-    const [isAuth, setIsAuth] = useState<boolean>(false);
-    const [current, setCurrent] = useState<string>("1");
-    const [userData, setUserData] = useState<QueueClient | undefined>(undefined);
-    const [queues, setQueues] = useState<Queue[]>([]);
-    const [queueData, setQueueData] = useState<Queue>({__v: 0, _id: "", clients: [], name: "", places: []});
     const [isDarkMode, setIsDarkMode] = useState(false);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
     const [progress, setProgress] = useState(0);
     const [isServerHealthy, setIsServerHealthy] = useState<boolean | null>(null);
 
-    const [messageService, contextHolder] = useDebouncedMessage();
+    const {isLoading, setIsLoading, axiosAPI, authProfileGetVerify, contextHolder}: IAuthContext = useAuthContext();
 
     const toggleTheme = () => {
         setIsDarkMode((prev) => !prev);
@@ -73,50 +63,6 @@ export default function App() {
         }
     }
 
-    async function authProfileGetVerify() {
-        const delay =
-            (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-        const token = localStorage.getItem("AuthToken");
-        if (!token) {
-            return;
-        }
-
-        try {
-            await delay(2000);
-            const profileResponse = await axiosAPI.getProfile();
-            setIsAuth(true);
-            try {
-                const userResponse: QueueClient = await axiosAPI.getUser(profileResponse.username);
-                setUserData(userResponse);
-            } catch (userError) {
-                console.error("Failed to fetch user data:", userError);
-            }
-        } catch (profileError) {
-            setIsAuth(false);
-            console.error("Failed to verify profile:", profileError);
-        }
-    }
-
-    async function getQueues() {
-        try {
-            const queues = await axiosAPI.getQueues();
-            setQueues(queues);
-        } catch (error) {
-            console.error("Failed to fetch queues:", error);
-        }
-    }
-
-    async function getQueueData(queueId: string) {
-        try {
-            const fetchedQueueData = await axiosAPI.findQueueById(queueId);
-            setQueueData((prevData) =>
-                JSON.stringify(prevData) !== JSON.stringify(fetchedQueueData) ? fetchedQueueData : prevData
-            );
-        } catch (error) {
-            console.error("Failed to fetch queue data:", error);
-        }
-    }
-
     return (
         <ConfigProvider
             theme={{
@@ -125,59 +71,39 @@ export default function App() {
                     : theme.defaultAlgorithm,
             }}
         >
-            <AuthContext.Provider
-                value={{
-                    isAuth,
-                    setIsAuth,
-                    messageService,
-                    axiosAPI,
-                    current,
-                    setCurrent,
-                    userData: userData || undefined,
-                    setUserData,
-                    isLoading,
-                    authProfileGetVerify,
-                    queues,
-                    getQueues,
-                    queueData,
-                    setQueueData,
-                    getQueueData,
-                }}
-            >
-                {contextHolder}
-                <BrowserRouter>
-                    {isServerHealthy === false ? (
-                        <Layout style={{
-                            minHeight: "100vh",
-                            display: "flex",
-                            justifyContent: "center",
-                            alignItems: "center"
-                        }}>
-                            <Alert
-                                message="Server is Down"
-                                description="The server is currently unavailable. Please try again later."
-                                type="error"
-                                showIcon
-                            />
-                        </Layout>
-                    ) : isLoading ? (
-                        <Layout style={{minHeight: "100vh"}}
-                                className={`loading ${progress === 100 ? 'fade-out' : ''}`}>
-                            <Sider collapsible/>
-                            <SiteLayout
-                                toggleTheme={toggleTheme}
-                                isDarkMode={isDarkMode}
-                                pages={<Progress type="circle" percent={progress}/>}
-                            />
-                        </Layout>
-                    ) : (
-                        <Layout style={{minHeight: "100vh"}} className="loading fade-in">
-                            <SiderBar/>
-                            <SiteLayout toggleTheme={toggleTheme} isDarkMode={isDarkMode} pages={<AppRouter/>}/>
-                        </Layout>
-                    )}
-                </BrowserRouter>
-            </AuthContext.Provider>
+            {contextHolder}
+            <BrowserRouter>
+                {isServerHealthy === false ? (
+                    <Layout style={{
+                        minHeight: "100vh",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center"
+                    }}>
+                        <Alert
+                            message="Server is Down"
+                            description="The server is currently unavailable. Please try again later."
+                            type="error"
+                            showIcon
+                        />
+                    </Layout>
+                ) : isLoading ? (
+                    <Layout style={{minHeight: "100vh"}}
+                            className={`loading ${progress === 100 ? 'fade-out' : ''}`}>
+                        <Sider collapsible/>
+                        <SiteLayout
+                            toggleTheme={toggleTheme}
+                            isDarkMode={isDarkMode}
+                            pages={<Progress type="circle" percent={progress}/>}
+                        />
+                    </Layout>
+                ) : (
+                    <Layout style={{minHeight: "100vh"}} className="loading fade-in">
+                        <NavigationBar/>
+                        <SiteLayout toggleTheme={toggleTheme} isDarkMode={isDarkMode} pages={<AppRouter/>}/>
+                    </Layout>
+                )}
+            </BrowserRouter>
         </ConfigProvider>
     );
 }

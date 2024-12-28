@@ -1,3 +1,5 @@
+import {BadRequestException} from "@nestjs/common";
+
 export const ThrottleConfig = {
     SIGNUP: {
         default: {
@@ -156,3 +158,27 @@ export const ThrottleConfig = {
         },
     },
 };
+
+export const getFormattedSchedule = (schedule: string[]) => {
+
+    if (schedule.length === 0) throw new BadRequestException('Schedule is empty while formatting');
+
+    const today = new Date();
+
+    const formattedSchedule = schedule.map((timeString) => {
+        const [hours, minutes] = timeString.split(':').map(Number);
+        if (isNaN(hours) || isNaN(minutes)) {
+            throw new BadRequestException(`Invalid time format: ${timeString}`);
+        }
+
+        return new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate(),
+            hours,
+            minutes
+        ).toISOString();
+    });
+
+    return formattedSchedule;
+}

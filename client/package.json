@@ -8,8 +8,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "parcel ./src/index.html",
-    "build": "parcel build src/index.html"
+    "start": "parcel ./src/index.html --public-url",
+    "build": "parcel build src/index.html --public-url"
   },
   "author": "",
   "license": "ISC",
@@ -27,6 +27,7 @@
   },
   "type": "module",
   "devDependencies": {
+    "@parcel/transformer-raw": "^2.13.3",
     "@parcel/transformer-sass": "^2.13.3",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",

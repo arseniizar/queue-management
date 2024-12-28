@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "concurrently \"npm run start --prefix client\" \"npm run start:dev --prefix server\""
+    "start": "concurrently \"npm run start:redis\" \"npm run start:client\" \"npm run start:server\"",
+    "start:redis": "wsl -d Ubuntu redis-server --daemonize yes || echo 'Ensure Redis is installed and properly configured on WSL'",
+    "start:client": "npm run start --prefix client",
+    "start:server": "npm run start:dev --prefix server"
   },
   "repository": {
     "type": "git",

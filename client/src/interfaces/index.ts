@@ -12,7 +12,8 @@ export interface QueueEntity {
     userId: string;
 }
 
-export interface QueuePlace extends QueueEntity {}
+export interface QueuePlace extends QueueEntity {
+}
 
 export interface QueueClient extends QueueEntity {
     appointment: Appointment | null;
@@ -52,6 +53,8 @@ export interface UserDeletion {
 }
 
 export interface PlaceAddition {
+    username: string;
+    queueId: string;
 }
 
 export interface ProfileResponse {

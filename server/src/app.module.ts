@@ -1,8 +1,8 @@
 import {Module} from '@nestjs/common';
 import {MongooseModule} from '@nestjs/mongoose';
 import {ConfigModule} from '@nestjs/config';
-import {ScheduleModule} from '@nestjs/schedule';
 import {ThrottlerModule} from '@nestjs/throttler';
+import {BullModule} from '@nestjs/bull';
 
 import {AppController} from './app.controller';
 import {AppService} from './app.service';
@@ -15,6 +15,8 @@ import {RolesModule} from './roles/roles.module';
 import {TimetablesModule} from './timetables/timetables.module';
 
 import {DatabaseService} from './database/database.service';
+import {ScheduleModule} from "@nestjs/schedule";
+import {SchedulerModule} from "@/schedule/scheduler.module";
 
 @Module({
     imports: [
@@ -22,7 +24,6 @@ import {DatabaseService} from './database/database.service';
             isGlobal: true,
             envFilePath: ['.env', '.env.local'],
         }),
-        ScheduleModule.forRoot(),
         ThrottlerModule.forRoot({
             throttlers: [
                 {
@@ -34,11 +35,19 @@ import {DatabaseService} from './database/database.service';
             ],
         }),
         MongooseModule.forRoot(process.env.MONGO_URI || ''),
+        BullModule.forRoot({
+            redis: {
+                host: process.env.REDIS_HOST || 'localhost',
+                port: parseInt(process.env.REDIS_PORT || '6379', 10),
+            },
+        }),
         UsersModule,
         AuthModule,
         MailModule,
         QueueModule,
         RolesModule,
+        ScheduleModule.forRoot(),
+        SchedulerModule,
         TimetablesModule,
     ],
     controllers: [AppController],

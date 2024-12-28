@@ -2,17 +2,17 @@ import React, {useCallback, useEffect, useState} from "react";
 import {useNavigate, useSearchParams} from "react-router-dom";
 import {Button, Form, Typography} from "antd";
 import {UserAddOutlined, PlayCircleOutlined} from "@ant-design/icons";
-import ClientAdditionModalForm from "../components/ClientAdditionModalForm/ClientAdditionModalForm";
-import PlaceCreationModalForm from "../components/PlaceCreationModalForm/PlaceCreationModalForm";
-import PlaceAdditionModalForm from "../components/PlaceAdditionModalForm/PlaceAdditionModalForm";
+import ClientAdditionModalForm from "../components/modals/ClientAdditionModalForm";
+import PlaceCreationModalForm from "../components/modals/PlaceCreationModalForm";
+import PlaceAdditionModalForm from "../components/modals/PlaceAdditionModalForm";
 import {useAuthContext} from "../context/context";
 import {routerPaths} from "../router/router";
-import {DataTable} from "../components/QueueDetails/DataTable";
+import {DataTable} from "../components/queueDetails/DataTable";
 import {Appointment, QueueClient, QueuePlace} from "../interfaces";
-import {PlaceActions} from "../components/QueueDetails/PlaceActions";
+import {PlaceActions} from "../components/queueDetails/PlaceActions";
 import {ColumnsType} from "antd/es/table";
-import ClientActions from "../components/QueueDetails/ClientActions";
-import StepInQueueModalForm from "../components/StepInQueueModalForm/StepInQueueModalForm";
+import ClientActions from "../components/queueDetails/ClientActions";
+import StepInQueueModalForm from "../components/modals/StepInQueueModalForm";
 
 const debounce = (func: (...args: any[]) => void, delay: number) => {
     let timeoutId: NodeJS.Timeout | null = null;

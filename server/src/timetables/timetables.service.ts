@@ -1,4 +1,4 @@
-import {BadRequestException, Injectable, NotFoundException} from "@nestjs/common";
+import {BadRequestException, Injectable, InternalServerErrorException, NotFoundException} from "@nestjs/common";
 import {InjectModel} from "@nestjs/mongoose";
 import {Model} from "mongoose";
 import {AppointDto} from "src/dto/appoint.dto";
@@ -6,13 +6,16 @@ import {CreateTimetableDto} from "src/dto/create-timetable.dto";
 import {FindScheduleDto} from "src/dto/find-schedule.dto";
 import {Timetable, TimetableDocument} from "src/schemas/timetable.schema";
 import {UsersService} from "src/users/users.service";
+import {SchedulerService} from "@/schedule/scheduler.service";
+import {getFormattedSchedule} from "@/constants";
 
 @Injectable()
 export class TimetablesService {
     constructor(
         @InjectModel(Timetable.name)
         private timetableModel: Model<TimetableDocument>,
-        private usersService: UsersService
+        private usersService: UsersService,
+        private schedulerService: SchedulerService,
     ) {
     }
 
@@ -22,27 +25,38 @@ export class TimetablesService {
 
     /**
      * Finds a timetable by the associated placeId.
-     * @param placeId - The ID of the place to find the timetable for.
      * @returns The timetable document if found, otherwise throws an error.
+     * @param criteria
      */
-    async findOne(criteria: { placeId: string }): Promise<TimetableDocument> {
+    async findOne(criteria: { placeId: string }): Promise<TimetableDocument | null> {
         const timetable = await this.timetableModel.findOne(criteria).exec();
-
-        if (!timetable) {
-            throw new NotFoundException('Timetable not found for the given placeId.');
-        }
-
         return timetable;
+    }
+
+    /**
+     * Delete a timetable based on placeId
+     * @param placeId - The ID of the place whose timetable should be deleted
+     */
+    async delete(placeId: string): Promise<void> {
+        const result = await this.timetableModel.deleteOne({placeId}).exec();
+        if (result.deletedCount === 0) {
+            throw new NotFoundException(`Timetable for placeId ${placeId} not found.`);
+        }
     }
 
     async create(createTimetableDto: CreateTimetableDto) {
         const isPlaceIdExists = await this.timetableModel
             .exists({placeId: createTimetableDto.placeId})
             .exec();
+
         if (isPlaceIdExists) {
             throw new BadRequestException("Timetable for this place already exists");
         }
-        const createdTimetable = new this.timetableModel({...createTimetableDto});
+
+        const createdTimetable = new this.timetableModel({
+            ...createTimetableDto,
+        });
+
         return createdTimetable.save();
     }
 
@@ -85,21 +99,24 @@ export class TimetablesService {
             placeId: appointDto.placeId,
         });
         const client = await this.usersService.findOne(appointDto.clientUsername);
+
         if (!timetable || !client) {
-            throw new BadRequestException("Client or timetable is not exist");
+            throw new BadRequestException("Client or timetable does not exist");
         }
+
         const appointments = timetable.appointments;
         const newAppointment = {
             time: appointDto.time,
             clientId: client._id.toString(),
         };
+
         const isAppointmentExist = appointments.filter(
             (appointment) => appointment.time === newAppointment.time
         );
         if (isAppointmentExist.length) {
             throw new BadRequestException("Appointment already exists");
         }
-        appointments.push(newAppointment);
+
         const freeTime = await this.findSchedule({placeId: appointDto.placeId});
         const isTimeValid = timetable.schedule.filter(
             (time) => time === appointDto.time
@@ -107,10 +124,27 @@ export class TimetablesService {
         if (isTimeValid.length === 0) {
             throw new BadRequestException("This time is invalid");
         }
-        return this.timetableModel.findByIdAndUpdate(
-            timetable._id,
-            {appointments: [...appointments]}
-        );
+
+        appointments.push(newAppointment);
+
+        await this.timetableModel.findByIdAndUpdate(timetable._id, {
+            appointments: [...appointments],
+        });
+
+        // Schedule the email notification
+        const appointmentDate = new Date(appointDto.time); // Assuming appointDto.time is a valid date string
+        if (appointmentDate) {
+            try {
+                await this.schedulerService.scheduleAppointmentNotification(
+                    client.email,
+                    appointmentDate
+                );
+            } catch (error) {
+                throw new InternalServerErrorException("Failed to schedule email notification");
+            }
+        }
+
+        return {message: "Appointment created and email scheduled"};
     }
 
 

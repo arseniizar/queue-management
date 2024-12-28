@@ -8,6 +8,7 @@ import PasswordReset from "../pages/PasswordReset";
 import ForgotPassword from "../pages/ForgotPassword";
 import Queues from "../pages/Queues";
 import QueueDetails from "../pages/QueueDetails";
+import Guide from "../pages/Guide";
 
 export const routerPaths = {
     menu: "/",
@@ -18,6 +19,7 @@ export const routerPaths = {
     registration: "/registration",
     passwordReset: "/password-reset",
     forgotPassword: "/forgot-password",
+    guide: "/guide",
 };
 
 export const privateRoutes = [
@@ -25,6 +27,7 @@ export const privateRoutes = [
     {path: routerPaths.profile, element: <Profile/>},
     {path: routerPaths.queues, element: <Queues/>},
     {path: routerPaths.queueDetails, element: <QueueDetails/>},
+    {path: routerPaths.guide, element: <Guide/>},
     {path: "*", element: <Navigate to={routerPaths.menu} replace/>},
 ];
 

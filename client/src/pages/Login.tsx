@@ -4,7 +4,7 @@ import {Link, useNavigate} from "react-router-dom";
 import {Button, Checkbox, Form, Input, Typography} from "antd";
 import {LockOutlined, UserOutlined} from "@ant-design/icons";
 import "./pages.scss";
-import SubmitButton from "../components/Buttons/SubmitButton";
+import SubmitButton from "../components/buttons/SubmitButton";
 
 const Login = () => {
     const {messageService, axiosAPI, setIsAuth, setCurrent, authProfileGetVerify}: IAuthContext =

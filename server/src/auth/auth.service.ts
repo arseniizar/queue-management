@@ -16,6 +16,7 @@ import {v4 as uuid} from 'uuid';
 import {ResetPasswordDto} from 'src/dto/reset-password.dto';
 import {RolesService} from 'src/roles/roles.service';
 import {TimetablesService} from 'src/timetables/timetables.service';
+import {getFormattedSchedule} from "@/constants";
 
 @Injectable()
 export class AuthService {
@@ -75,23 +76,7 @@ export class AuthService {
             roles: employeeRole?._id,
         });
 
-        const today = new Date();
-
-        const formattedSchedule = ['12:00', '13:00', '15:00'].map((timeString) => {
-            const [hours, minutes] = timeString.split(':').map(Number);
-            if (isNaN(hours) || isNaN(minutes)) {
-                throw new BadRequestException(`Invalid time format: ${timeString}`);
-            }
-
-            return new Date(
-                today.getFullYear(),
-                today.getMonth(),
-                today.getDate(),
-                hours,
-                minutes
-            ).toISOString();
-        });
-
+        const formattedSchedule = getFormattedSchedule(['12:00, 13:00, 16:15']);
         await this.timetableService.create({
             placeId: user._id.toString(),
             schedule: formattedSchedule,
