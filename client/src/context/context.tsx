@@ -19,6 +19,8 @@ export interface IAuthContext {
     authProfileGetVerify: () => Promise<void>;
     isLoading: boolean;
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+    isEmployee: boolean;
+    setIsEmployee: React.Dispatch<React.SetStateAction<boolean>>;
     queues: Queue[];
     getQueues: () => Promise<void>;
     queueData: Queue;
@@ -31,6 +33,7 @@ export const AuthContext = createContext<IAuthContext | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
     const [isAuth, setIsAuth] = useState<boolean>(false);
+    const [isEmployee, setIsEmployee] = useState<boolean>(false);
     const [current, setCurrent] = useState<string>("1");
     const [userData, setUserData] = useState<QueueClient | undefined>(undefined);
     const [queues, setQueues] = useState<Queue[]>([]);
@@ -102,6 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
             queues,
             queueData,
             authProfileGetVerify,
+            isEmployee,
+            setIsEmployee,
             isAuth,
             setIsAuth,
             current,

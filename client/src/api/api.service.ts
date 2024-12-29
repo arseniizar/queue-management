@@ -270,6 +270,11 @@ class AxiosAPI {
         const response = await this.axios.get(API_ENDPOINTS.TIMETABLES.CREATE_PERSONAL_TIMETABLE);
         return response.data;
     }
+
+    async isEmployee() {
+        const response = await this.axios.get(API_ENDPOINTS.USERS.IS_EMPLOYEE);
+        return response.data;
+    }
 }
 
 export default AxiosAPI;

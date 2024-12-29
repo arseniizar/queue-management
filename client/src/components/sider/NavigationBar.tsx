@@ -9,7 +9,7 @@ import {
     PoweroffOutlined,
     KeyOutlined,
     HddOutlined,
-    AppstoreOutlined,
+    AppstoreOutlined, ScheduleOutlined,
 } from "@ant-design/icons";
 import {MenuProps} from "antd";
 import {Layout, Menu} from "antd";
@@ -37,7 +37,17 @@ function getItem(
 }
 
 const NavigationBar: React.FC = () => {
-    const {isAuth, setIsAuth, current, setCurrent, axiosAPI, authProfileGetVerify, setUserData}: IAuthContext =
+    const {
+        isAuth,
+        setIsAuth,
+        current,
+        setCurrent,
+        axiosAPI,
+        authProfileGetVerify,
+        setUserData,
+        isEmployee,
+        setIsEmployee
+    }: IAuthContext =
         useAuthContext();
     const [collapsed, setCollapsed] = useState(window.innerWidth <= 800);
     const [siderItems, setSiderItems] = useState<MenuItem[] | undefined>(
@@ -61,7 +71,10 @@ const NavigationBar: React.FC = () => {
             await authProfileGetVerify();
         }
     };
-    ``
+
+    useEffect(() => {
+        axiosAPI.isEmployee().then(() => setIsEmployee(true)).catch(() => setIsEmployee(false));
+    }, [isAuth]);
 
     useEffect(() => {
         const items: MenuItem[] = [
@@ -84,11 +97,12 @@ const NavigationBar: React.FC = () => {
                             "profile",
                             <InfoOutlined/>
                         ),
-                        getItem(
-                            <Link to={routerPaths.schedule}>Schedule</Link>,
-                            "schedule",
-                            <InfoOutlined/>
-                        ),
+                        isEmployee ?
+                            getItem(
+                                <Link to={routerPaths.schedule}>Schedule</Link>,
+                                "schedule",
+                                <ScheduleOutlined/>
+                            ) : null,
                         getItem(
                             <Link to="/login" onClick={logout}>
                                 Logout
@@ -108,7 +122,7 @@ const NavigationBar: React.FC = () => {
                 ]),
         ];
         setSiderItems(items);
-    }, [isAuth]);
+    }, [isAuth, isEmployee]);
 
     useEffect(() => {
         window.addEventListener("resize", handleResize);

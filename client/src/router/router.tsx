@@ -10,6 +10,7 @@ import Queues from "../pages/Queues";
 import QueueDetails from "../pages/QueueDetails";
 import Guide from "../pages/Guide";
 import Schedule from "../pages/Schedule";
+import {EmployeeRoute} from "./EmployeeRoute";
 
 export const routerPaths = {
     menu: "/",
@@ -30,7 +31,7 @@ export const privateRoutes = [
     {path: routerPaths.queues, element: <Queues/>},
     {path: routerPaths.queueDetails, element: <QueueDetails/>},
     {path: routerPaths.guide, element: <Guide/>},
-    {path: routerPaths.schedule, element:<Schedule/>},
+    {path: routerPaths.schedule, element: <EmployeeRoute><Schedule/></EmployeeRoute>},
     {path: "*", element: <Navigate to={routerPaths.menu} replace/>},
 ];
 

@@ -24,6 +24,7 @@ const API_ENDPOINTS = {
     },
     USERS: {
         GET_BY_USERNAME: "/users",
+        IS_EMPLOYEE: '/users/is-employee',
     },
     HEALTH: {
         CHECK: "/health-check",

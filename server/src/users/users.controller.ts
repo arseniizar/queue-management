@@ -1,12 +1,12 @@
 import {
     Body,
     Controller,
-    Delete,
+    Delete, ForbiddenException,
     Get,
     NotFoundException,
     Param,
     Patch,
-    Post,
+    Post, Req,
     UseGuards,
 } from '@nestjs/common';
 import {Throttle} from '@nestjs/throttler';
@@ -18,6 +18,7 @@ import {RolesGuard} from 'src/auth/guards/roles.guard';
 import {Roles} from '@/decorators/roles.decorator';
 import {Role} from '@/enums/role.enum';
 import {ThrottleConfig} from "@/constants";
+import {AuthRequest} from "@/auth/auth.controller";
 
 @Controller('users')
 @UseGuards(AccessTokenGuard)
@@ -37,6 +38,15 @@ export class UsersController {
     @Get()
     async findAll(): Promise<User[]> {
         return this.usersService.findAll();
+    }
+
+    @Throttle(ThrottleConfig.DELETE_USER)
+    @Get('is-employee')
+    @Roles(Role.Employee)
+    @UseGuards(RolesGuard)
+    async isEmployee(@Req() req: AuthRequest) {
+        if (!req.user || !req.user.userId) throw new ForbiddenException('User is not an employee.');
+        return true;
     }
 
     @Throttle(ThrottleConfig.FIND_ONE_USER)
