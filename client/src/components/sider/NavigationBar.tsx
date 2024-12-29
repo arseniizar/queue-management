@@ -85,6 +85,11 @@ const NavigationBar: React.FC = () => {
                             <InfoOutlined/>
                         ),
                         getItem(
+                            <Link to={routerPaths.schedule}>Schedule</Link>,
+                            "schedule",
+                            <InfoOutlined/>
+                        ),
+                        getItem(
                             <Link to="/login" onClick={logout}>
                                 Logout
                             </Link>,

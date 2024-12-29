@@ -18,8 +18,9 @@ class AxiosAPI {
     private debounceTime: number = 1000;
     private debouncedEndpointPatterns: RegExp[];
     private readonly setIsAuth: React.Dispatch<React.SetStateAction<boolean>>;
+    private readonly isAuth: boolean;
 
-    constructor(private baseURL: string, setIsAuth: React.Dispatch<React.SetStateAction<boolean>>) {
+    constructor(private baseURL: string, setIsAuth: React.Dispatch<React.SetStateAction<boolean>>, isAuth: boolean) {
         this.debouncedEndpointPatterns = [
             new RegExp(`^${API_ENDPOINTS.QUEUES.APPROVE_CLIENT}/.+/.+$`),
             new RegExp(`^${API_ENDPOINTS.QUEUES.CANCEL_CLIENT}/.+/.+$`),
@@ -27,6 +28,7 @@ class AxiosAPI {
         ];
 
         this.setIsAuth = setIsAuth;
+        this.isAuth = isAuth;
 
         this.axios = axios.create({
             baseURL,
@@ -61,61 +63,35 @@ class AxiosAPI {
             return config;
         });
 
-        let isRefreshing = false;
-        let failedQueue: any[] = [];
 
         this.axios.interceptors.response.use(
             (response) => response,
             async (error) => {
-                const {config, response} = error;
+                const {response} = error;
 
-                if (response?.status === 401 || response?.status === 403) {
-                    // Handle Unauthorized Error
-                    if (!config._retry) {
-                        config._retry = true;
-
-                        if (!isRefreshing) {
-                            isRefreshing = true;
-                            try {
-                                const newToken = await this.refreshToken();
-                                failedQueue.forEach((req) => req.resolve(newToken));
-                                failedQueue = [];
-                            } catch (refreshError) {
-                                failedQueue.forEach((req) => req.reject(refreshError));
-                                failedQueue = [];
-
-                                try {
-                                    await this.axios.get(API_ENDPOINTS.AUTH.LOGOUT);
-                                } catch (logoutError) {
-                                    console.error('Logout endpoint failed:', logoutError);
-                                } finally {
-                                    this.logoutUser();
-                                    window.location.href = '/login';
-                                }
-                            } finally {
-                                isRefreshing = false;
-                            }
+                if (response?.status === 401) {
+                    if (this.isAuth) {
+                        try {
+                            await this.axios.get(API_ENDPOINTS.AUTH.LOGOUT);
+                        } catch (logoutError) {
+                            console.error('Logout endpoint failed:', logoutError);
+                        } finally {
+                            this.logoutUser();
+                            window.location.href = '/login';
                         }
-
-                        return new Promise((resolve, reject) => {
-                            failedQueue.push({
-                                resolve: (token: string) => {
-                                    config.headers.Authorization = `Bearer ${token}`;
-                                    resolve(this.axios(config));
-                                },
-                                reject: (err: any) => reject(err),
-                            });
-                        });
-                    } else {
-                        // If retry already occurred, clear local tokens and redirect
-                        this.logoutUser();
-                        window.location.href = '/login';
                     }
+                }
+
+                if (response?.status === 403) {
+                    console.error('Forbidden access - check permissions');
+                    // setIsAuth(false);
+                    // window.location.href = '/forbidden';
                 }
 
                 return Promise.reject(error);
             }
         );
+
     }
 
 
@@ -157,11 +133,11 @@ class AxiosAPI {
         return this.get<{ status: string; database: string }>(API_ENDPOINTS.HEALTH.CHECK);
     }
 
-    private post<T>(url: string, data: unknown): Promise<T> {
+    post<T>(url: string, data: unknown): Promise<T> {
         return this.axios.post<T>(url, data).then((res) => res.data);
     }
 
-    private get<T>(url: string): Promise<T> {
+    get<T>(url: string): Promise<T> {
         return this.axios.get<T>(url).then((res) => res.data);
     }
 
@@ -253,7 +229,7 @@ class AxiosAPI {
         );
     }
 
-    findSchedule(findScheduleDto: { placeId: string }): Promise<any> {
+    async findSchedule(findScheduleDto: { placeId: string }): Promise<any> {
         return this.post(API_ENDPOINTS.TIMETABLES.FIND_SCHEDULE, findScheduleDto);
     }
 
@@ -265,13 +241,34 @@ class AxiosAPI {
         return this.post(API_ENDPOINTS.TIMETABLES.APPOINT, appointDto);
     }
 
-    createTimetable(createTimetableDto: { placeId: string; schedule: string[]; }): Promise<any> {
+    async createTimetable(createTimetableDto: { placeId: string; schedule: string[]; }): Promise<any> {
         return this.post(API_ENDPOINTS.TIMETABLES.CREATE_TIMETABLE, createTimetableDto);
     }
 
 
     async getAvailableTimes(placeId: string): Promise<string[]> {
-        return this.get<string[]>(`/timetables/available-times/${placeId}`);
+        return this.get<string[]>(`${API_ENDPOINTS.TIMETABLES.AVAILABLE_TIMES}/${placeId}`);
+    }
+
+
+    async getSchedule() {
+        const response = await this.axios.get(API_ENDPOINTS.TIMETABLES.MY_SCHEDULE);
+        return response.data;
+    }
+
+    async addTimeToSchedule(time: string) {
+        const response = await this.axios.post(API_ENDPOINTS.TIMETABLES.ADD_TIME, {time});
+        return response.data;
+    }
+
+    async removeTimeFromSchedule(time: string) {
+        const response = await this.axios.post(API_ENDPOINTS.TIMETABLES.REMOVE_TIME, {time});
+        return response.data;
+    }
+
+    async createPersonalTimetable() {
+        const response = await this.axios.get(API_ENDPOINTS.TIMETABLES.CREATE_PERSONAL_TIMETABLE);
+        return response.data;
     }
 }
 

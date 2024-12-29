@@ -159,4 +159,66 @@ export class TimetablesService {
 
         return availableTimes;
     }
+
+    /**
+     * Adds a new time slot to the timetable's schedule.
+     * @param userId - The ID of the user (for authorization or auditing purposes).
+     * @param time - The time slot to add.
+     */
+    async addTime(userId: string, time: string): Promise<TimetableDocument> {
+        const timetable = await this.timetableModel.findOne({userId});
+
+        if (!timetable) {
+            throw new NotFoundException('Timetable not found for the user.');
+        }
+
+        if (timetable.schedule.includes(time)) {
+            throw new BadRequestException('This time slot already exists in the schedule.');
+        }
+
+        timetable.schedule.push(time);
+
+        await timetable.save();
+
+        return timetable;
+    }
+
+    /**
+     * Removes a time slot from the timetable's schedule.
+     * @param userId - The ID of the user (for authorization or auditing purposes).
+     * @param time - The time slot to remove.
+     */
+    async removeTime(userId: string, time: string): Promise<TimetableDocument> {
+        const timetable = await this.timetableModel.findOne({userId});
+
+        if (!timetable) {
+            throw new NotFoundException('Timetable not found for the user.');
+        }
+
+        const timeIndex = timetable.schedule.indexOf(time);
+
+        if (timeIndex === -1) {
+            throw new BadRequestException('This time slot does not exist in the schedule.');
+        }
+
+        timetable.schedule.splice(timeIndex, 1);
+
+        await timetable.save();
+
+        return timetable;
+    }
+
+    /**
+     * Retrieves the timetable schedule for the specified user.
+     * @param userId - The ID of the user.
+     */
+    async getSchedule(userId: string): Promise<string[]> {
+        const timetable = await this.timetableModel.findOne({userId});
+
+        if (!timetable) {
+            throw new NotFoundException('Timetable not found for the user.');
+        }
+
+        return timetable.schedule;
+    }
 }

@@ -63,3 +63,11 @@ export interface ProfileResponse {
     sub: string;      // User ID
     username: string; // Username of the user
 }
+
+export interface ScheduleResponse {
+    schedule: string[];
+}
+
+export interface ErrorResponse {
+    message: string;
+}

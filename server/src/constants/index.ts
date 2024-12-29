@@ -164,6 +164,7 @@ export const getFormattedSchedule = (schedule: string[]) => {
     if (schedule.length === 0) throw new BadRequestException('Schedule is empty while formatting');
 
     const today = new Date();
+    today.setDate(today.getDate() + 1);
 
     const formattedSchedule = schedule.map((timeString) => {
         const [hours, minutes] = timeString.split(':').map(Number);

@@ -9,6 +9,7 @@ import ForgotPassword from "../pages/ForgotPassword";
 import Queues from "../pages/Queues";
 import QueueDetails from "../pages/QueueDetails";
 import Guide from "../pages/Guide";
+import Schedule from "../pages/Schedule";
 
 export const routerPaths = {
     menu: "/",
@@ -20,6 +21,7 @@ export const routerPaths = {
     passwordReset: "/password-reset",
     forgotPassword: "/forgot-password",
     guide: "/guide",
+    schedule: "/schedule",
 };
 
 export const privateRoutes = [
@@ -28,6 +30,7 @@ export const privateRoutes = [
     {path: routerPaths.queues, element: <Queues/>},
     {path: routerPaths.queueDetails, element: <QueueDetails/>},
     {path: routerPaths.guide, element: <Guide/>},
+    {path: routerPaths.schedule, element:<Schedule/>},
     {path: "*", element: <Navigate to={routerPaths.menu} replace/>},
 ];
 

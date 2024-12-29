@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
     const [messageService, contextHolder] = useDebouncedMessage();
 
     const [axiosAPI, setAxiosAPI] = useState<AxiosAPI>(
-        new AxiosAPI(process.env.REACT_APP_API_URL || "http://localhost:3000", setIsAuth)
+        new AxiosAPI(process.env.REACT_APP_API_URL || "http://localhost:3000", setIsAuth, isAuth)
     )
 
 
