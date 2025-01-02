@@ -61,6 +61,7 @@ const NavigationBar: React.FC = () => {
     const logout = async () => {
         try {
             await axiosAPI.logout();
+            axiosAPI.logoutUser();
             localStorage.removeItem("AuthToken");
             setIsAuth(false);
             setUserData(undefined);
@@ -73,7 +74,7 @@ const NavigationBar: React.FC = () => {
     };
 
     useEffect(() => {
-        axiosAPI.isEmployee().then(() => setIsEmployee(true)).catch(() => setIsEmployee(false));
+        if (isAuth) axiosAPI.isEmployee().then(() => setIsEmployee(true)).catch(() => setIsEmployee(false));
     }, [isAuth]);
 
     useEffect(() => {

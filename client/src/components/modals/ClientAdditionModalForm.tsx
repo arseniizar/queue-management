@@ -1,7 +1,8 @@
-import {Cascader, Form, Input, Modal, Select} from "antd";
+import {Cascader, Form, Input, Modal, Select, DatePicker} from "antd";
 import React, {useEffect, useState} from "react";
 import {useAuthContext} from "../../context/context";
 import {useSearchParams} from "react-router-dom";
+import dayjs from "dayjs";
 
 interface UseResetFormOnCloseModalProps {
     form: any;
@@ -25,8 +26,12 @@ const ClientAdditionModalForm: React.FC<{
     const queueId = searchParams.get("queue");
     const [loading, setLoading] = useState<boolean>(false);
     const [options, setOptions] = useState<Option[]>([]);
-    const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+    const [availableTimes, setAvailableTimes] = useState<
+        { value: string; label: string; disabled: boolean }[]
+    >([]);
+    const [isUsernameEntered, setIsUsernameEntered] = useState<boolean>(false);
     const [isPlaceSelected, setIsPlaceSelected] = useState<boolean>(false);
+    const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
     useEffect(() => {
         if (!queueId) {
@@ -59,22 +64,51 @@ const ClientAdditionModalForm: React.FC<{
         }
     }, [queueData.places]);
 
-    const fetchAvailableTimes = async (placeId: string) => {
+    const fetchAvailableTimes = async (placeId: string, day: string) => {
         try {
-            const times = await axiosAPI.getAvailableTimes(placeId);
-            setAvailableTimes(times);
+            const now = dayjs();
+            const times = await axiosAPI.getAvailableTimes(placeId, day);
+
+            const processedTimes = times.map((time: string) => {
+                const timeObj = dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`);
+                return {
+                    value: time,
+                    label: time,
+                    disabled: timeObj.isBefore(now),
+                };
+            });
+
+            setAvailableTimes(processedTimes);
         } catch (error) {
             messageService.open({type: "error", content: "Failed to fetch available times."});
         }
     };
 
+    const onUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setIsUsernameEntered(!!e.target.value);
+    };
+
     const onPlaceChange = (value: (string | number)[]) => {
         const selectedPlace = value[value.length - 1] as string;
-        if (selectedPlace) {
-            setIsPlaceSelected(true);
-            fetchAvailableTimes(selectedPlace);
+        setIsPlaceSelected(!!selectedPlace);
+
+        if (!selectedPlace || !selectedDay) {
+            setAvailableTimes([]);
+        } else if (selectedDay) {
+            fetchAvailableTimes(selectedPlace, selectedDay);
+        }
+    };
+
+    const onDayChange = (date: dayjs.Dayjs | null) => {
+        if (date) {
+            const day = date.format("dddd").toLowerCase();
+            setSelectedDay(day);
+            if (isPlaceSelected && form.getFieldValue("place")) {
+                const selectedPlace = form.getFieldValue("place")[0];
+                fetchAvailableTimes(selectedPlace, day);
+            }
         } else {
-            setIsPlaceSelected(false);
+            setSelectedDay(null);
             setAvailableTimes([]);
         }
     };
@@ -84,6 +118,8 @@ const ClientAdditionModalForm: React.FC<{
         setOptions([]);
         setAvailableTimes([]);
         setIsPlaceSelected(false);
+        setSelectedDay(null);
+        setIsUsernameEntered(false);
         onCancel();
     };
 
@@ -102,26 +138,27 @@ const ClientAdditionModalForm: React.FC<{
             return;
         }
 
-        const clientData = {
-            username: values.username,
-            queueId,
-            time: values.time,
-            place: Array.isArray(values.place) ? values.place[0] : values.place,
-        };
-
         try {
-            await axiosAPI.appoint({
-                clientUsername: clientData.username,
-                time: clientData.time,
-                placeId: clientData.place,
-            });
+            const date = values.day.format("YYYY-MM-DD");
+            const time = values.time;
+            const isoTime = dayjs(`${date}T${time}`).toISOString();
+
+            const clientData = {
+                username: values.username,
+                queueId,
+                time: isoTime,
+                place: Array.isArray(values.place) ? values.place[0] : values.place,
+            };
+
             await axiosAPI.addClientToQueue(clientData.queueId, clientData.username, {
                 time: clientData.time,
                 place: clientData.place,
             });
+
             await getQueueData(queueId);
             messageService.open({type: "success", content: "Client added successfully!"});
-            handleCancel(); // Close the modal and reset state
+
+            handleCancel();
         } catch (error: any) {
             console.error(error);
             messageService.open({
@@ -130,18 +167,19 @@ const ClientAdditionModalForm: React.FC<{
             });
         }
     };
+    ;
 
     return (
         <Modal
             title="Add Client to Queue"
             open={open}
             onOk={onOk}
-            onCancel={handleCancel} // Use custom cancel logic
+            onCancel={handleCancel}
             destroyOnClose
         >
             <Form form={form} layout="vertical" name="clientForm" onFinish={onFinish}>
                 <Form.Item name="username" label="Username" rules={[{required: true}]}>
-                    <Input placeholder="Enter username"/>
+                    <Input placeholder="Enter username" onChange={onUsernameChange}/>
                 </Form.Item>
                 <Form.Item
                     name="place"
@@ -153,6 +191,21 @@ const ClientAdditionModalForm: React.FC<{
                         placeholder="Choose the place"
                         loading={loading}
                         onChange={onPlaceChange}
+                        disabled={!isUsernameEntered}
+                    />
+                </Form.Item>
+                <Form.Item
+                    name="day"
+                    label="Day"
+                    rules={[{required: true, message: "Please select a day."}]}
+                >
+                    <DatePicker
+                        placeholder="Select a day"
+                        disabled={!isPlaceSelected}
+                        disabledDate={(current) =>
+                            !current || current < dayjs().startOf("day") || current > dayjs().add(1, "year")
+                        }
+                        onChange={onDayChange}
                     />
                 </Form.Item>
                 <Form.Item
@@ -160,10 +213,10 @@ const ClientAdditionModalForm: React.FC<{
                     label="Time"
                     rules={[{required: true, message: "Please select a time."}]}
                 >
-                    <Select placeholder="Select available time" disabled={!isPlaceSelected} loading={loading}>
+                    <Select placeholder="Select available time" disabled={!selectedDay} loading={loading}>
                         {availableTimes.map((time) => (
-                            <Select.Option key={time} value={time}>
-                                {time}
+                            <Select.Option key={time.value} value={time.value} disabled={time.disabled}>
+                                {time.label}
                             </Select.Option>
                         ))}
                     </Select>

@@ -3,20 +3,16 @@ import {UsersService} from '@/users/users.service';
 import {JwtService} from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import {ConfigService} from '@nestjs/config';
-import {CreateUserDto} from 'src/dto/create-user.dto';
 import {isEmail, isPhoneNumber} from 'class-validator';
-import {AuthDto} from 'src/dto/auth.dto';
-import {ForgotPasswordDto} from 'src/dto/forgot-password.dto';
 import {MailService} from 'src/mail/mail.service';
-import {ResetTokenDto} from 'src/dto/resetToken.dto';
 import {ResetToken, ResetTokenDocument} from 'src/schemas/resetToken.schema';
 import {Model, Types} from 'mongoose';
 import {InjectModel} from '@nestjs/mongoose';
 import {v4 as uuid} from 'uuid';
-import {ResetPasswordDto} from 'src/dto/reset-password.dto';
 import {RolesService} from 'src/roles/roles.service';
 import {TimetablesService} from 'src/timetables/timetables.service';
-import {getFormattedSchedule} from "@/constants";
+import {defaultSchedule} from "@/constants";
+import {CreateUserDto, AuthDto, ForgotPasswordDto, ResetPasswordDto, ResetTokenDto} from '@/dto';
 
 @Injectable()
 export class AuthService {
@@ -28,7 +24,7 @@ export class AuthService {
         @InjectModel(ResetToken.name)
         private readonly resetTokenModel: Model<ResetTokenDocument>,
         private readonly rolesService: RolesService,
-        private readonly timetableService: TimetablesService,
+        private readonly timetablesService: TimetablesService,
     ) {
     }
 
@@ -69,17 +65,20 @@ export class AuthService {
 
     async employ(username: string) {
         const user = await this.usersService.findOne(username);
-        if (!user) throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
+        if (!user) throw new HttpException("User not found", HttpStatus.BAD_REQUEST);
 
-        const employeeRole = await this.rolesService.findRoles({name: 'employee'});
+        const employeeRole = await this.rolesService.findRoles({name: "employee"});
+        if (!employeeRole) {
+            throw new HttpException("Employee role not found", HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
         const employee = await this.usersService.findOneAndUpdate(user._id, {
-            roles: employeeRole?._id,
+            roles: employeeRole._id,
         });
 
-        const formattedSchedule = getFormattedSchedule(['12:00, 13:00, 16:15']);
-        await this.timetableService.create({
+        await this.timetablesService.create({
             placeId: user._id.toString(),
-            schedule: formattedSchedule,
+            schedule: defaultSchedule,
         });
 
         return employee;

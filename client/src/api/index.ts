@@ -35,9 +35,8 @@ const API_ENDPOINTS = {
         CREATE_TIMETABLE: "/timetables/create",
         CREATE_PERSONAL_TIMETABLE: "/timetables/create-personal",
         AVAILABLE_TIMES: "/timetables/available-times",
-        ADD_TIME: "/timetables/add-time",
         MY_SCHEDULE: "/timetables/my-schedule",
-        REMOVE_TIME: "/timetables/remove-time",
+        SUBMIT_SCHEDULE: "/timetables/submit-schedule",
     },
 };
 

@@ -1,15 +1,12 @@
 import {Body, Controller, Get, Post, Req, UseGuards} from '@nestjs/common';
 import {Throttle} from '@nestjs/throttler';
 import {Request} from 'express';
-import {AuthDto} from 'src/dto/auth.dto';
-import {CreateUserDto} from 'src/dto/create-user.dto';
-import {ForgotPasswordDto} from 'src/dto/forgot-password.dto';
-import {ResetPasswordDto} from 'src/dto/reset-password.dto';
 import {DataTransformationPipe} from '@/pipes/data-transformation.pipe';
 import {AuthService} from './auth.service';
 import {AccessTokenGuard} from './guards/accessToken.guard';
 import {RefreshTokenGuard} from './guards/refreshToken.guard';
 import {ThrottleConfig} from '@/constants';
+import {AuthDto, CreateUserDto, ForgotPasswordDto, ResetPasswordDto} from "@/dto";
 
 export interface AuthRequest extends Request {
     user?: {
@@ -45,7 +42,7 @@ export class AuthController {
     @Throttle(ThrottleConfig.LOGOUT)
     @Get('logout')
     async logout(@Req() req: AuthRequest) {
-        if (!req.user?.sub) {
+        if (!req.user?.userId) {
             throw new Error('No user ID found in JWT');
         }
         return this.authService.logout(req.user.sub);

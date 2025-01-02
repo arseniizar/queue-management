@@ -16,7 +16,7 @@ export interface QueuePlace extends QueueEntity {
 }
 
 export interface QueueClient extends QueueEntity {
-    appointment: Appointment | null;
+    appointment: Appointment;
     approved: boolean;
     cancelled: boolean;
     processed: boolean;
@@ -70,4 +70,26 @@ export interface ScheduleResponse {
 
 export interface ErrorResponse {
     message: string;
+}
+
+export interface ScheduleObj {
+    day: string;
+    timeStamps: string[];
+    _id: string;
+}
+
+export interface UserData {
+    _id: string;
+    appointment: string | null;
+    approved: boolean;
+    cancelled: boolean;
+    email: string;
+    key: string;
+    password: string;
+    phone: string;
+    processed: boolean;
+    refreshToken: string;
+    roles: string;
+    username: string;
+    __v: number;
 }

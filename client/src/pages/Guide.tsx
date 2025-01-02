@@ -1,11 +1,14 @@
 import React from "react";
 import {Layout, Typography, Row, Col, Divider, Card, Button} from "antd";
 import {PlayCircleOutlined} from "@ant-design/icons";
+import {routerPaths} from "../router/router";
+import {useNavigate} from "react-router-dom";
 
 const {Content} = Layout;
 const {Title, Paragraph} = Typography;
 
 const Guide: React.FC = () => {
+    const navigate = useNavigate();
     return (
         <Layout style={{backgroundColor: "#f0f2f5", minHeight: "100vh"}}>
             <Content style={{padding: "20px 50px"}}>
@@ -87,6 +90,34 @@ const Guide: React.FC = () => {
 
                             </iframe>
                         </div>
+
+                        <div
+                            style={{
+                                maxWidth: "800px",
+                                margin: "0 auto",
+                                position: "relative",
+                                paddingTop: "56.25%",
+                                backgroundColor: "#e8e8e8",
+                                borderRadius: "8px",
+                                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                            }}
+                        >
+
+                            <iframe
+                                style={{
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    width: "100%",
+                                    height: "100%",
+                                    borderRadius: "8px",
+                                    border: "none",
+                                }}
+                                src="https://www.youtube.com/embed/zStZsJkpKt4"
+                                title="Queue Schedule" frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                referrerPolicy="strict-origin-when-cross-origin" allowFullScreen></iframe>
+                        </div>
                     </div>
 
 
@@ -114,8 +145,8 @@ const Guide: React.FC = () => {
                     <Divider>Get Started</Divider>
 
                     <div style={{textAlign: "center"}}>
-                        <Button type="primary" size="large" style={{borderRadius: "5px"}}>
-                            Go to Dashboard
+                        <Button type="primary" size="large" style={{borderRadius: "5px"}} onClick={() => navigate(routerPaths.queues)}>
+                            Go to Queues
                         </Button>
                     </div>
                 </Card>

@@ -4,8 +4,10 @@ import {
     Place,
     PlaceAddition,
     ProfileResponse,
-    Queue, QueueClient,
-    User,
+    Queue,
+    QueueClient,
+    ScheduleObj,
+    User, UserData,
     UserDeletion,
     UserLogin,
 } from "../interfaces";
@@ -72,7 +74,8 @@ class AxiosAPI {
                 if (response?.status === 401) {
                     if (this.isAuth) {
                         try {
-                            await this.axios.get(API_ENDPOINTS.AUTH.LOGOUT);
+                            await this.logout();
+                            this.logoutUser();
                         } catch (logoutError) {
                             console.error('Logout endpoint failed:', logoutError);
                         } finally {
@@ -150,17 +153,15 @@ class AxiosAPI {
     }
 
     logout(): Promise<void> {
-        const promise = this.get<void>(API_ENDPOINTS.AUTH.LOGOUT);
-        this.logoutUser();
-        return promise;
+        return this.get<void>(API_ENDPOINTS.AUTH.LOGOUT);
     }
 
     getProfile(): Promise<ProfileResponse> {
         return this.get<ProfileResponse>(API_ENDPOINTS.AUTH.PROFILE);
     }
 
-    getUser(username: string): Promise<QueueClient> {
-        return this.get<QueueClient>(`${API_ENDPOINTS.USERS.GET_BY_USERNAME}/${username}`);
+    getUser(username: string): Promise<UserData> {
+        return this.get<UserData>(`${API_ENDPOINTS.USERS.GET_BY_USERNAME}/${username}`);
     }
 
     forgotPassword(email: string): Promise<string> {
@@ -229,10 +230,6 @@ class AxiosAPI {
         );
     }
 
-    async findSchedule(findScheduleDto: { placeId: string }): Promise<any> {
-        return this.post(API_ENDPOINTS.TIMETABLES.FIND_SCHEDULE, findScheduleDto);
-    }
-
     appoint(appointDto: {
         clientUsername: string;
         placeId: string;
@@ -241,39 +238,54 @@ class AxiosAPI {
         return this.post(API_ENDPOINTS.TIMETABLES.APPOINT, appointDto);
     }
 
-    async createTimetable(createTimetableDto: { placeId: string; schedule: string[]; }): Promise<any> {
-        return this.post(API_ENDPOINTS.TIMETABLES.CREATE_TIMETABLE, createTimetableDto);
+    async getAvailableTimes(placeId: string, day: string): Promise<any> {
+        const response = await this.get<any>(
+            `${API_ENDPOINTS.TIMETABLES.AVAILABLE_TIMES}/${placeId}/${day}`
+        );
+        return response;
     }
 
-
-    async getAvailableTimes(placeId: string): Promise<string[]> {
-        return this.get<string[]>(`${API_ENDPOINTS.TIMETABLES.AVAILABLE_TIMES}/${placeId}`);
+    async getSchedule(): Promise<ScheduleObj[]> {
+        try {
+            const response: ScheduleObj[] = await this.get<any>(API_ENDPOINTS.TIMETABLES.MY_SCHEDULE);
+            return response;
+        } catch (error) {
+            console.error("Failed to fetch schedule:", error);
+            return Promise.reject("Unable to fetch schedule. Please try again.");
+        }
     }
 
-
-    async getSchedule() {
-        const response = await this.axios.get(API_ENDPOINTS.TIMETABLES.MY_SCHEDULE);
-        return response.data;
+    async createPersonalTimetable(): Promise<any> {
+        try {
+            const response = await this.get<any>(API_ENDPOINTS.TIMETABLES.CREATE_PERSONAL_TIMETABLE);
+            return response;
+        } catch (error) {
+            console.error("Failed to create personal timetable:", error);
+            return Promise.reject("Unable to create personal timetable. Please try again.");
+        }
     }
 
-    async addTimeToSchedule(time: string) {
-        const response = await this.axios.post(API_ENDPOINTS.TIMETABLES.ADD_TIME, {time});
-        return response.data;
+    async isEmployee(): Promise<boolean> {
+        try {
+            const response = await this.get<{ data: boolean }>(API_ENDPOINTS.USERS.IS_EMPLOYEE);
+            return response.data;
+        } catch (error) {
+            console.error("Failed to check employee status:", error);
+            return Promise.reject("Unable to verify employee status. Please try again.");
+        }
     }
 
-    async removeTimeFromSchedule(time: string) {
-        const response = await this.axios.post(API_ENDPOINTS.TIMETABLES.REMOVE_TIME, {time});
-        return response.data;
-    }
-
-    async createPersonalTimetable() {
-        const response = await this.axios.get(API_ENDPOINTS.TIMETABLES.CREATE_PERSONAL_TIMETABLE);
-        return response.data;
-    }
-
-    async isEmployee() {
-        const response = await this.axios.get(API_ENDPOINTS.USERS.IS_EMPLOYEE);
-        return response.data;
+    async submitSchedule(schedule: ScheduleObj[], placeId: string): Promise<any> {
+        try {
+            const response = await this.post<any>(
+                API_ENDPOINTS.TIMETABLES.SUBMIT_SCHEDULE,
+                {placeId, schedule}
+            );
+            return response;
+        } catch (error) {
+            console.error("Failed to submit schedule:", error);
+            return Promise.reject("Unable to submit schedule. Please try again.");
+        }
     }
 }
 

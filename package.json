@@ -16,5 +16,8 @@
   "private": true,
   "devDependencies": {
     "concurrently": "^9.1.0"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.13"
   }
 }

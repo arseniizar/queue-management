@@ -7,6 +7,7 @@ import {UsersModule} from "src/users/users.module";
 import {RolesModule} from "src/roles/roles.module";
 import {AuthModule} from "src/auth/auth.module";
 import {TimetablesModule} from "@/timetables/timetables.module";
+import {DayjsModule} from "@/dayjs/dayjs.module";
 
 @Module({
     imports: [
@@ -14,7 +15,8 @@ import {TimetablesModule} from "@/timetables/timetables.module";
         UsersModule,
         RolesModule,
         AuthModule,
-        TimetablesModule
+        TimetablesModule,
+        DayjsModule
     ],
     providers: [QueueService],
     controllers: [QueueController],

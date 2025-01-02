@@ -1,7 +1,8 @@
-import {Cascader, Form, Modal} from "antd";
+import {Cascader, Form, Modal, DatePicker} from "antd";
 import React, {useEffect, useState} from "react";
 import {useAuthContext} from "../../context/context";
 import {useSearchParams} from "react-router-dom";
+import dayjs from "dayjs";
 
 interface UseResetFormOnCloseModalProps {
     form: any;
@@ -27,7 +28,8 @@ const StepInQueueModalForm: React.FC<{
     const [loading, setLoading] = useState<boolean>(false);
     const [placeOptions, setPlaceOptions] = useState<Option[]>([]);
     const [timeOptions, setTimeOptions] = useState<Option[]>([]);
-    const [isPlaceSelected, setIsPlaceSelected] = useState<boolean>(false);
+    const [selectedDay, setSelectedDay] = useState<string | null>(null);
+    const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
 
     useEffect(() => {
         if (!queueId) {
@@ -66,30 +68,45 @@ const StepInQueueModalForm: React.FC<{
         open,
     });
 
-    const onPlaceChange = async (selectedPlace: string) => {
-        if (!selectedPlace) {
-            setIsPlaceSelected(false);
-            setTimeOptions([]);
-            return;
-        }
-
-        setIsPlaceSelected(true);
+    const fetchAvailableTimes = async (place: string, day: string) => {
         try {
             setLoading(true);
-            const availableTimes = await axiosAPI.getAvailableTimes(selectedPlace);
-            const options = availableTimes.map((time: string) => ({
-                value: time,
-                label: time,
-            }));
+            const availableTimes = await axiosAPI.getAvailableTimes(place, day);
+            const now = dayjs();
+            const options = availableTimes.map((time: string) => {
+                const timeObj = dayjs(`${dayjs().format("YYYY-MM-DD")}T${time}`);
+                return {
+                    value: time,
+                    label: time,
+                    disabled: timeObj.isBefore(now),
+                };
+            });
             setTimeOptions(options);
         } catch (error: any) {
             console.error(error);
             messageService.open({
                 type: "error",
-                content: "Failed to load available times for the selected place.",
+                content: "Failed to load available times for the selected place and day.",
             });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const onPlaceChange = (place: string) => {
+        setSelectedPlace(place);
+        setSelectedDay(null);
+        setTimeOptions([]);
+    };
+
+    const onDayChange = (date: dayjs.Dayjs | null) => {
+        if (date && selectedPlace) {
+            const day = date.format("dddd").toLowerCase();
+            setSelectedDay(day);
+            fetchAvailableTimes(selectedPlace, day);
+        } else {
+            setSelectedDay(null);
+            setTimeOptions([]);
         }
     };
 
@@ -97,7 +114,8 @@ const StepInQueueModalForm: React.FC<{
         form.resetFields();
         setPlaceOptions([]);
         setTimeOptions([]);
-        setIsPlaceSelected(false);
+        setSelectedPlace(null);
+        setSelectedDay(null);
         onCancel();
     };
 
@@ -111,33 +129,49 @@ const StepInQueueModalForm: React.FC<{
             return;
         }
 
-        const appointment = {
-            time: values.time,
-            place: values.place[0],
-        };
-
         try {
+            const selectedDay = form.getFieldValue("day");
+            const selectedTime = values.time[0];
+
+            if (!selectedDay || !selectedTime) {
+                messageService.open({type: "error", content: "Please select both day and time."});
+                return;
+            }
+
+            const combinedDateTime = dayjs(selectedDay.format("YYYY-MM-DD") + "T" + selectedTime);
+            if (!combinedDateTime.isValid()) {
+                throw new Error("Invalid date or time.");
+            }
+
+            const timeISO = combinedDateTime.toISOString();
+
+            const appointment = {
+                time: timeISO,
+                place: values.place[0],
+            };
+
             await axiosAPI.addClientToQueue(queueId, username, appointment);
 
             await getQueueData(queueId);
             messageService.open({type: "success", content: "Client stepped into queue successfully!"});
 
-            handleCancel(); // Close the modal and reset state
+            handleCancel();
         } catch (error: any) {
             console.error(error);
             messageService.open({
                 type: "error",
-                content: error.response?.data?.message || "Failed to step client into queue.",
+                content: error.message || "Failed to step client into queue.",
             });
         }
     };
+    ;
 
     return (
         <Modal
-            title="Step Client into Queue"
+            title="Step into Queue"
             open={open}
             onOk={onOk}
-            onCancel={handleCancel} // Use custom cancel handler
+            onCancel={handleCancel}
             destroyOnClose
         >
             <Form form={form} layout="vertical" name="stepInQueueForm" onFinish={onFinish}>
@@ -154,6 +188,20 @@ const StepInQueueModalForm: React.FC<{
                     />
                 </Form.Item>
                 <Form.Item
+                    name="day"
+                    label="Day"
+                    rules={[{required: true, message: "Please select a day."}]}
+                >
+                    <DatePicker
+                        placeholder="Select a day"
+                        disabled={!selectedPlace}
+                        disabledDate={(current) =>
+                            !current || current < dayjs().startOf("day") || current > dayjs().add(1, "year")
+                        }
+                        onChange={onDayChange}
+                    />
+                </Form.Item>
+                <Form.Item
                     name="time"
                     label="Time"
                     rules={[{required: true, message: "Please select a time."}]}
@@ -162,7 +210,7 @@ const StepInQueueModalForm: React.FC<{
                         options={timeOptions}
                         placeholder="Choose the time"
                         loading={loading}
-                        disabled={!isPlaceSelected}
+                        disabled={!selectedDay}
                     />
                 </Form.Item>
             </Form>

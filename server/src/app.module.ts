@@ -17,6 +17,7 @@ import {TimetablesModule} from './timetables/timetables.module';
 import {DatabaseService} from './database/database.service';
 import {ScheduleModule} from "@nestjs/schedule";
 import {SchedulerModule} from "@/schedule/scheduler.module";
+import { DayjsModule } from './dayjs/dayjs.module';
 
 @Module({
     imports: [
@@ -49,6 +50,7 @@ import {SchedulerModule} from "@/schedule/scheduler.module";
         ScheduleModule.forRoot(),
         SchedulerModule,
         TimetablesModule,
+        DayjsModule,
     ],
     controllers: [AppController],
     providers: [AppService, DatabaseService],

@@ -2,42 +2,22 @@ import {
     BadRequestException,
     ForbiddenException,
     HttpException,
-    HttpStatus,
+    HttpStatus, Inject,
     Injectable,
     NotFoundException,
 } from '@nestjs/common';
 import {InjectModel} from '@nestjs/mongoose';
 import {Model} from 'mongoose';
 import {AuthService} from 'src/auth/auth.service';
-import {AddClientToQueueDto, ClientAppointment} from 'src/dto/add-client-to-queue.dto';
-import {AddPlaceToQueue} from 'src/dto/add-place-to-queue.dto';
-import {QueuePlaceDto} from 'src/dto/queue-place.dto';
-import {QueueDto} from 'src/dto/queue.dto';
-import {UserDeleteDto} from 'src/dto/user-delete.dto';
 import {RolesService} from 'src/roles/roles.service';
-import {Queue, QueueDocument} from 'src/schemas/queue.schema';
+import {Client, Place, Queue, QueueDocument} from 'src/schemas/queue.schema';
 import {UsersService} from 'src/users/users.service';
 import {v4 as uuid} from 'uuid';
 import {UserDocument} from "@/schemas/user.schema";
 import {TimetablesService} from "@/timetables/timetables.service";
-import {getFormattedSchedule} from "@/constants";
-
-interface Place {
-    username: string;
-    email: string;
-    phone: string;
-    userId: string;
-    queueId: string;
-    roles: string;
-    key: string;
-}
-
-interface Client extends Place {
-    cancelled: boolean;
-    approved: boolean;
-    processed: boolean;
-    appointment: ClientAppointment | null;
-}
+import {defaultSchedule} from "@/constants";
+import {AddClientToQueueDto, AddPlaceToQueue, QueueDto, QueuePlaceDto, UserDeleteDto} from "@/dto";
+import dayjs, {Dayjs} from "dayjs";
 
 @Injectable()
 export class QueueService {
@@ -47,6 +27,7 @@ export class QueueService {
         private readonly authService: AuthService,
         private readonly rolesService: RolesService,
         private readonly timetablesService: TimetablesService,
+        @Inject('DAYJS') private readonly mDayjs: typeof dayjs
     ) {
     }
 
@@ -61,6 +42,26 @@ export class QueueService {
         if (!addClientToQueueDto.appointment) {
             throw new HttpException('Appointment details are required.', HttpStatus.BAD_REQUEST);
         }
+
+        // Validate the place being appointed
+        const place = queue.places.find(
+            (p) => p.userId === addClientToQueueDto.appointment.place
+        );
+        if (!place) {
+            throw new ForbiddenException("The specified place is invalid or not part of this queue.");
+        }
+
+        // Prevent self-appointing (if needed)
+        if (user._id.toString() === place.userId) {
+            throw new ForbiddenException("A place cannot appoint itself.");
+        }
+
+        // Proceed with appointment
+        await this.timetablesService.appoint({
+            clientUsername: addClientToQueueDto.username,
+            placeId: addClientToQueueDto.appointment.place,
+            time: addClientToQueueDto.appointment.time,
+        });
 
         const client: Client = {
             username: user.username,
@@ -95,12 +96,13 @@ export class QueueService {
         return updatedQueue;
     }
 
+
     async addPlaceToQueue(addPlaceToQueue: AddPlaceToQueue) {
         const user = await this.userService.findOne(addPlaceToQueue.username);
         const queue = await this.queueModel.findById(addPlaceToQueue.queueId).exec();
 
         if (!user || !queue) {
-            throw new ForbiddenException("Queue or place doesn't exist.");
+            throw new ForbiddenException("Queue or user doesn't exist.");
         }
 
         const userRole = await this.rolesService.findById(user.roles);
@@ -108,7 +110,7 @@ export class QueueService {
             throw new ForbiddenException('This user is not an employee.');
         }
 
-        const place: Place = {
+        const place = {
             username: user.username,
             email: user.email,
             phone: user.phone,
@@ -118,27 +120,23 @@ export class QueueService {
             key: user.key,
         };
 
-        const places = queue.places as Place[];
+        const places = queue.places;
         this.isClientOrPlaceExists<Place>(
             places,
             place,
             'This user already exists in this queue',
         );
 
-        // Add the place to the queue
         places.push(place);
 
-
-        // Check if a timetable already exists for this place
         const existingTimetable = await this.timetablesService.findOne({
             placeId: user._id.toString(),
         });
 
         if (!existingTimetable) {
-            // Create a default timetable if it doesn't exist
             await this.timetablesService.create({
                 placeId: user._id.toString(),
-                schedule: getFormattedSchedule(['09:00', '12:00', '18:00']),
+                schedule: defaultSchedule,
             });
         }
 
@@ -147,6 +145,7 @@ export class QueueService {
             {places},
             {new: true},
         );
+
         return updatedQueue;
     }
 
@@ -285,36 +284,27 @@ export class QueueService {
             throw new ForbiddenException("Queue doesn't exist.");
         }
 
-        const clients = queue.clients as Client[];
-        const index = clients.findIndex((c) => c.userId === userDeleteDto.userId);
-        if (index === -1) {
-            throw new ForbiddenException('Client does not exist.');
+        const clients: Client[] = queue.clients;
+        const clientIndex = clients.findIndex((client) => client.userId === userDeleteDto.userId);
+        if (clientIndex === -1) {
+            throw new ForbiddenException("Client does not exist in the queue.");
         }
 
-        const client = clients[index];
+        const client = clients[clientIndex];
         const {appointment} = client;
 
         if (!appointment) {
-            throw new ForbiddenException('Client has no appointment to remove.');
+            throw new ForbiddenException("Client has no appointment to remove.");
         }
 
-        clients.splice(index, 1);
+        const {place, time} = appointment;
 
-        const timetable = await this.timetablesService.findOne({
-            placeId: appointment.place,
-        });
+        clients.splice(clientIndex, 1);
+
+        const timetable = await this.timetablesService.findOne({placeId: place});
 
         if (!timetable) {
-            throw new ForbiddenException('Timetable for the associated place not found.');
-        }
-
-        const isTimeInAppointments = timetable.appointments.some(
-            (a) => a.time === appointment.time && a.clientId !== userDeleteDto.userId,
-        );
-
-        if (!isTimeInAppointments && !timetable.schedule.includes(appointment.time)) {
-            timetable.schedule.push(appointment.time);
-            timetable.schedule.sort();
+            throw new ForbiddenException("Timetable for the associated place not found.");
         }
 
         timetable.appointments = timetable.appointments.filter(

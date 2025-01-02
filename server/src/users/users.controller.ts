@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import {Throttle} from '@nestjs/throttler';
 import {UsersService} from './users.service';
-import {CreateUserDto} from 'src/dto/create-user.dto';
 import {User} from 'src/schemas/user.schema';
 import {AccessTokenGuard} from 'src/auth/guards/accessToken.guard';
 import {RolesGuard} from 'src/auth/guards/roles.guard';
@@ -19,6 +18,7 @@ import {Roles} from '@/decorators/roles.decorator';
 import {Role} from '@/enums/role.enum';
 import {ThrottleConfig} from "@/constants";
 import {AuthRequest} from "@/auth/auth.controller";
+import {CreateUserDto} from "@/dto";
 
 @Controller('users')
 @UseGuards(AccessTokenGuard)

@@ -24,6 +24,12 @@ const debounce = (func: (...args: any[]) => void, delay: number) => {
 
 const QueueDetails: React.FC = () => {
     const {setCurrent, axiosAPI, queueData, getQueueData, messageService, userData} = useAuthContext();
+    const [appointmentsData, setAppointmentsData] = useState<{
+        key: string;
+        clientUsername: string;
+        time: string;
+        place: string
+    }[]>([]);
     const [searchParams] = useSearchParams();
     const [loading, setLoading] = useState<boolean>(false);
     const [openClientModal, setOpenClientModal] = useState<boolean>(false);
@@ -62,6 +68,7 @@ const QueueDetails: React.FC = () => {
 
     useEffect(() => {
         if (queueData) {
+            // Process places
             setPlacesData(
                 queueData.places?.map((place: QueuePlace) => ({
                     key: place.userId,
@@ -75,6 +82,18 @@ const QueueDetails: React.FC = () => {
                     ...client,
                 })) || []
             );
+
+            // Process appointments
+            const appointments = queueData.clients
+                ?.filter((client) => client.appointment)
+                .map((client) => ({
+                    key: client.userId,
+                    clientUsername: client.username,
+                    time: client.appointment.time,
+                    place: client.appointment.place,
+                })) || [];
+
+            setAppointmentsData(appointments);
         }
     }, [queueData]);
 
@@ -183,6 +202,7 @@ const QueueDetails: React.FC = () => {
             ),
         },
     ];
+    ;
 
     return (
         <div className="queueDetailsContainer">
@@ -193,8 +213,9 @@ const QueueDetails: React.FC = () => {
                     if (name === "clientForm") setOpenClientModal(false);
                 }}
             >
+                {/* Place Table Section */}
                 <div className="placeTableContainer">
-                    <Typography.Title level={4}>Place table</Typography.Title>
+                    <Typography.Title level={4}>Place Table</Typography.Title>
                     <div className="tableButtonsContainer">
                         <Button shape="round" onClick={() => setOpenPlaceCreationModal(true)}>
                             <UserAddOutlined/> Create Place
@@ -203,25 +224,40 @@ const QueueDetails: React.FC = () => {
                             <UserAddOutlined/> Add Place
                         </Button>
                     </div>
-                    <DataTable dataSource={placesData} loading={loading} columns={placeColumns}/>
+                    <DataTable
+                        dataSource={placesData}
+                        loading={loading}
+                        columns={placeColumns}
+                    />
                 </div>
-                <div className="clientTableContainer">
-                    <Typography.Title level={4}>Client table</Typography.Title>
-                    <div className="tableButtonsContainer">
-                        <Button disabled={!placesData.length} shape="round" onClick={() => setOpenClientModal(true)}>
-                            <UserAddOutlined/> Add client
-                        </Button>
 
+                {/* Client Table Section */}
+                <div className="clientTableContainer">
+                    <Typography.Title level={4}>Client Table</Typography.Title>
+                    <div className="tableButtonsContainer">
+                        <Button
+                            disabled={!placesData.length}
+                            shape="round"
+                            onClick={() => setOpenClientModal(true)}
+                        >
+                            <UserAddOutlined/> Add Client
+                        </Button>
                         <Button
                             disabled={!placesData.length}
                             shape="round"
                             onClick={() => setOpenStepInQueueModal(true)}
                         >
-                            <PlayCircleOutlined/> Step in queue
+                            <PlayCircleOutlined/> Step in Queue
                         </Button>
                     </div>
-                    <DataTable dataSource={clientsData} loading={loading} columns={clientColumns}/>
+                    <DataTable
+                        dataSource={clientsData}
+                        loading={loading}
+                        columns={clientColumns}
+                    />
                 </div>
+
+                {/* Modals */}
                 <ClientAdditionModalForm
                     open={openClientModal}
                     onCancel={() => setOpenClientModal(false)}

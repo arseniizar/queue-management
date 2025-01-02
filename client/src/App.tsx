@@ -53,7 +53,11 @@ export default function App() {
             const healthStatus = await axiosAPI.checkConnection();
             if (healthStatus.status === "OK" && healthStatus.database === "Connected") {
                 setIsServerHealthy(true);
-                authProfileGetVerify();
+                const authToken = localStorage.getItem("AuthToken");
+                const refreshToken = localStorage.getItem("RefreshToken");
+                if (authToken && refreshToken) {
+                    authProfileGetVerify();
+                }
             } else {
                 setIsServerHealthy(false);
             }

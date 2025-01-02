@@ -1,4 +1,5 @@
 import {BadRequestException} from "@nestjs/common";
+import {ScheduleObj} from "@/schemas/timetable.schema";
 
 export const ThrottleConfig = {
     SIGNUP: {
@@ -159,27 +160,11 @@ export const ThrottleConfig = {
     },
 };
 
-export const getFormattedSchedule = (schedule: string[]) => {
 
-    if (schedule.length === 0) throw new BadRequestException('Schedule is empty while formatting');
-
-    const today = new Date();
-    today.setDate(today.getDate() + 1);
-
-    const formattedSchedule = schedule.map((timeString) => {
-        const [hours, minutes] = timeString.split(':').map(Number);
-        if (isNaN(hours) || isNaN(minutes)) {
-            throw new BadRequestException(`Invalid time format: ${timeString}`);
-        }
-
-        return new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate(),
-            hours,
-            minutes
-        ).toISOString();
-    });
-
-    return formattedSchedule;
-}
+export const defaultSchedule: ScheduleObj[] = [
+    {day: 'monday', timeStamps: ['09:00', '12:00', '18:00']},
+    {day: 'tuesday', timeStamps: ['09:00', '12:00', '18:00']},
+    {day: 'wednesday', timeStamps: ['09:00', '12:00', '18:00']},
+    {day: 'thursday', timeStamps: ['09:00', '12:00', '18:00']},
+    {day: 'friday', timeStamps: ['09:00', '12:00', '18:00']},
+];

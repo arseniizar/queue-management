@@ -1,19 +1,14 @@
 import {Body, Controller, Get, Param, Patch, Post, UseGuards,} from "@nestjs/common";
 import {Throttle} from "@nestjs/throttler";
-import {AddClientToQueueDto} from "src/dto/add-client-to-queue.dto";
-import {QueuePlaceDto} from "src/dto/queue-place.dto";
-import {QueueDto} from "src/dto/queue.dto";
 import {DataTransformationPipe} from "@/pipes/data-transformation.pipe";
 import {QueueService} from "./queues.service";
-import {UserDeleteDto} from "src/dto/user-delete.dto";
-import {QueueDeleteDto} from "src/dto/queue-delete.dto";
-import {AddPlaceToQueue} from "src/dto/add-place-to-queue.dto";
 import {AccessTokenGuard} from "@/auth/guards/accessToken.guard";
 import {RolesGuard} from "@/auth/guards/roles.guard";
 import {Roles} from "@/decorators/roles.decorator";
 import {Role} from "@/enums/role.enum";
 import {ThrottleConfig} from "@/constants";
 import {User} from "@/schemas/user.schema";
+import {AddClientToQueueDto, AddPlaceToQueue, QueueDeleteDto, QueueDto, QueuePlaceDto, UserDeleteDto} from "@/dto";
 
 @Controller("queues")
 @UseGuards(AccessTokenGuard)

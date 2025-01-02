@@ -1,13 +1,16 @@
-import {BadRequestException, Injectable, InternalServerErrorException, NotFoundException} from "@nestjs/common";
+import {
+    BadRequestException, Inject,
+    Injectable,
+    InternalServerErrorException,
+    NotFoundException,
+} from "@nestjs/common";
 import {InjectModel} from "@nestjs/mongoose";
 import {Model} from "mongoose";
-import {AppointDto} from "src/dto/appoint.dto";
-import {CreateTimetableDto} from "src/dto/create-timetable.dto";
-import {FindScheduleDto} from "src/dto/find-schedule.dto";
-import {Timetable, TimetableDocument} from "src/schemas/timetable.schema";
+import {DayType, ScheduleObj, Timetable, TimetableAppointment, TimetableDocument} from "src/schemas/timetable.schema";
 import {UsersService} from "src/users/users.service";
 import {SchedulerService} from "@/schedule/scheduler.service";
-import {getFormattedSchedule} from "@/constants";
+import dayjs from "dayjs";
+import {AppointDto, CreateTimetableDto, FindScheduleDto} from "@/dto";
 
 @Injectable()
 export class TimetablesService {
@@ -16,27 +19,22 @@ export class TimetablesService {
         private timetableModel: Model<TimetableDocument>,
         private usersService: UsersService,
         private schedulerService: SchedulerService,
+        @Inject('DAYJS') private readonly mDayjs: typeof dayjs
     ) {
     }
 
-    async findById(id: string) {
-        return this.timetableModel.findById(id);
-    }
-
-    /**
-     * Finds a timetable by the associated placeId.
-     * @returns The timetable document if found, otherwise throws an error.
-     * @param criteria
-     */
-    async findOne(criteria: { placeId: string }): Promise<TimetableDocument | null> {
-        const timetable = await this.timetableModel.findOne(criteria).exec();
+    async findById(id: string): Promise<TimetableDocument> {
+        const timetable = await this.timetableModel.findById(id).exec();
+        if (!timetable) {
+            throw new NotFoundException(`Timetable with ID ${id} not found.`);
+        }
         return timetable;
     }
 
-    /**
-     * Delete a timetable based on placeId
-     * @param placeId - The ID of the place whose timetable should be deleted
-     */
+    async findOne(criteria: { placeId: string }): Promise<TimetableDocument | null> {
+        return this.timetableModel.findOne(criteria).exec();
+    }
+
     async delete(placeId: string): Promise<void> {
         const result = await this.timetableModel.deleteOne({placeId}).exec();
         if (result.deletedCount === 0) {
@@ -44,179 +42,201 @@ export class TimetablesService {
         }
     }
 
-    async create(createTimetableDto: CreateTimetableDto) {
-        const isPlaceIdExists = await this.timetableModel
-            .exists({placeId: createTimetableDto.placeId})
-            .exec();
-
-        if (isPlaceIdExists) {
-            throw new BadRequestException("Timetable for this place already exists");
+    async create(createTimetableDto: CreateTimetableDto): Promise<TimetableDocument> {
+        const exists = await this.timetableModel.exists({placeId: createTimetableDto.placeId}).exec();
+        if (exists) {
+            throw new BadRequestException("Timetable for this place already exists.");
         }
 
-        const createdTimetable = new this.timetableModel({
-            ...createTimetableDto,
-        });
+        const newTimetable = new this.timetableModel(createTimetableDto);
 
-        return createdTimetable.save();
+        try {
+            return await newTimetable.save();
+        } catch (error) {
+            console.error("Failed to save timetable:", error);
+            throw new BadRequestException("Failed to create timetable. Please try again.");
+        }
     }
 
-    async findSchedule(findScheduleDto: FindScheduleDto) {
+    async findSchedule(findScheduleDto: FindScheduleDto): Promise<string[]> {
         const timetable = await this.timetableModel.findOne({
             placeId: findScheduleDto.placeId,
-        });
+        }).exec();
+
         if (!timetable) {
-            throw new BadRequestException("This timetable is not exist");
+            throw new NotFoundException("Timetable not found.");
         }
-        const busyTime = timetable.appointments.filter((appointment) =>
-            timetable.schedule.includes(appointment.time)
-        );
-        if (busyTime) {
-            const freeTime = timetable.schedule.filter((time, index) => {
-                return timetable.schedule.indexOf(time) === index;
-            });
-            if (!freeTime) {
-                return "this place does not have free time";
-            }
-            return freeTime;
-        } else if (!busyTime) {
-            return timetable.schedule;
+
+        const daySchedule = timetable.schedule.find((s) => s.day === findScheduleDto.day);
+        if (!daySchedule) {
+            throw new NotFoundException(`No schedule found for ${findScheduleDto.day}.`);
         }
+
+        const busyTimes = timetable.appointments
+            .filter((appointment) => appointment.time.startsWith(findScheduleDto.day))
+            .map((appointment) => appointment.time.split("T")[1]);
+
+        const availableTimes = daySchedule.timeStamps.filter((time) => !busyTimes.includes(time));
+        return availableTimes.length ? availableTimes : ["No available times."];
     }
 
+    async addScheduleToTimetable(placeId: string, schedule: ScheduleObj[]): Promise<TimetableDocument> {
+        const timetable = await this.timetableModel.findOne({placeId}).exec();
 
-    async getAppointmentsByClientId(clientId: string) {
+        if (!timetable) {
+            throw new NotFoundException(`Timetable for placeId ${placeId} not found.`);
+        }
+
+        timetable.schedule = schedule;
+
+        return await timetable.save();
+    }
+
+    async getAppointmentsByClientId(clientId: string): Promise<TimetableAppointment[]> {
         const timetables = await this.timetableModel.find().exec();
-
-        const clientAppointments = timetables
+        return timetables
             .flatMap((timetable) => timetable.appointments)
             .filter((appointment) => appointment.clientId === clientId);
-
-        return clientAppointments;
     }
 
-    async appoint(appointDto: AppointDto) {
+    async appoint(appointDto: AppointDto): Promise<{ message: string }> {
         const timetable = await this.timetableModel.findOne({
             placeId: appointDto.placeId,
-        });
+        }).exec();
         const client = await this.usersService.findOne(appointDto.clientUsername);
 
         if (!timetable || !client) {
-            throw new BadRequestException("Client or timetable does not exist");
+            throw new BadRequestException("Client or timetable does not exist.");
         }
 
-        const appointments = timetable.appointments;
+        const appointmentTime = this.mDayjs(appointDto.time);
+        const day = appointmentTime.format("dddd").toLowerCase() as DayType;
+
+        const daySchedule = timetable.schedule.find((s) => s.day === day);
+        if (!daySchedule) {
+            throw new BadRequestException(`No schedule found for ${day}.`);
+        }
+
+        const isTimeValid = daySchedule.timeStamps.some((timestamp) => {
+            const scheduleTime = this.mDayjs(`${appointmentTime.format("YYYY-MM-DD")}T${timestamp}`, 'YYYY-MM-DDTHH:mm');
+            return appointmentTime.isSame(scheduleTime, 'minute');
+        });
+        if (!isTimeValid) {
+            throw new BadRequestException("This time is invalid.");
+        }
+
+        const isAppointmentExist = timetable.appointments.some(
+            (appointment) => this.mDayjs(appointment.time).isSame(appointmentTime, 'minute'),
+        );
+        if (isAppointmentExist) {
+            throw new BadRequestException("Appointment already exists.");
+        }
+
         const newAppointment = {
             time: appointDto.time,
             clientId: client._id.toString(),
         };
 
-        const isAppointmentExist = appointments.filter(
-            (appointment) => appointment.time === newAppointment.time
-        );
-        if (isAppointmentExist.length) {
-            throw new BadRequestException("Appointment already exists");
-        }
-
-        const freeTime = await this.findSchedule({placeId: appointDto.placeId});
-        const isTimeValid = timetable.schedule.filter(
-            (time) => time === appointDto.time
-        );
-        if (isTimeValid.length === 0) {
-            throw new BadRequestException("This time is invalid");
-        }
-
-        appointments.push(newAppointment);
-
-        await this.timetableModel.findByIdAndUpdate(timetable._id, {
-            appointments: [...appointments],
-        });
-
-        // Schedule the email notification
-        const appointmentDate = new Date(appointDto.time); // Assuming appointDto.time is a valid date string
-        if (appointmentDate) {
-            try {
-                await this.schedulerService.scheduleAppointmentNotification(
-                    client.email,
-                    appointmentDate
-                );
-            } catch (error) {
-                throw new InternalServerErrorException("Failed to schedule email notification");
-            }
-        }
-
-        return {message: "Appointment created and email scheduled"};
-    }
-
-
-    async getAvailableTimes(placeId: string): Promise<string[]> {
-        const timetable = await this.timetableModel.findOne({placeId});
-        if (!timetable) {
-            throw new BadRequestException("This timetable does not exist.");
-        }
-
-        const busyTimes = timetable.appointments.map((appointment) => appointment.time);
-        const availableTimes = timetable.schedule.filter((time) => !busyTimes.includes(time));
-
-        return availableTimes;
-    }
-
-    /**
-     * Adds a new time slot to the timetable's schedule.
-     * @param userId - The ID of the user (for authorization or auditing purposes).
-     * @param time - The time slot to add.
-     */
-    async addTime(userId: string, time: string): Promise<TimetableDocument> {
-        const timetable = await this.timetableModel.findOne({userId});
-
-        if (!timetable) {
-            throw new NotFoundException('Timetable not found for the user.');
-        }
-
-        if (timetable.schedule.includes(time)) {
-            throw new BadRequestException('This time slot already exists in the schedule.');
-        }
-
-        timetable.schedule.push(time);
-
+        timetable.appointments.push(newAppointment);
         await timetable.save();
 
-        return timetable;
-    }
-
-    /**
-     * Removes a time slot from the timetable's schedule.
-     * @param userId - The ID of the user (for authorization or auditing purposes).
-     * @param time - The time slot to remove.
-     */
-    async removeTime(userId: string, time: string): Promise<TimetableDocument> {
-        const timetable = await this.timetableModel.findOne({userId});
-
-        if (!timetable) {
-            throw new NotFoundException('Timetable not found for the user.');
+        try {
+            await this.schedulerService.scheduleAppointmentNotification(
+                client.email,
+                appointmentTime.toDate(),
+            );
+        } catch {
+            throw new InternalServerErrorException("Failed to schedule email notification.");
         }
 
-        const timeIndex = timetable.schedule.indexOf(time);
+        return { message: "Appointment created and email scheduled." };
+    }
 
+    async getAvailableTimes(placeId: string, day: string): Promise<string[]> {
+        const timetable = await this.timetableModel.findOne({placeId}).exec();
+        if (!timetable) {
+            throw new NotFoundException("Timetable not found.");
+        }
+
+        const daySchedule = timetable.schedule.find((s) => s.day === day);
+        if (!daySchedule) {
+            throw new NotFoundException(`No schedule found for ${day}.`);
+        }
+
+        const busyTimes = timetable.appointments
+            .filter((appointment) => {
+                const appointmentDate = new Date(appointment.time).toISOString().split("T")[0];
+                const dayDate = new Date().toISOString().split("T")[0];
+                return appointmentDate === dayDate;
+            })
+            .map((appointment) => new Date(appointment.time).toISOString().split("T")[1].slice(0, 5));
+
+        return daySchedule.timeStamps.filter((time) => !busyTimes.includes(time));
+    }
+
+
+    // async addTime(userId: string, day: DayType, time: string): Promise<TimetableDocument> {
+    //     const timetable = await this.timetableModel.findOne({userId}).exec();
+    //     if (!timetable) {
+    //         throw new NotFoundException("Timetable not found.");
+    //     }
+    //
+    //     const daySchedule = timetable.schedule.find((s) => s.day === day);
+    //
+    //     if (!daySchedule) {
+    //         timetable.schedule.push({day, timeStamps: [time]});
+    //     } else {
+    //         const newTime = this.mDayjs(time, "HH:mm");
+    //         if (!newTime.isValid()) {
+    //             throw new BadRequestException("Invalid time format. Use HH:mm.");
+    //         }
+    //
+    //         // Check for 90-minute conflicts with existing times
+    //         const hasConflict = daySchedule.timeStamps.some((existingTime) => {
+    //             const existing = this.mDayjs(existingTime, "HH:mm");
+    //             const diff = Math.abs(newTime.diff(existing, "minute"));
+    //             return diff < 90;
+    //         });
+    //
+    //         if (hasConflict) {
+    //             throw new BadRequestException(
+    //                 "Time slot must be at least 90 minutes apart from existing slots."
+    //             );
+    //         }
+    //
+    //         // Add the new time and sort the timestamps
+    //         daySchedule.timeStamps.push(time);
+    //         daySchedule.timeStamps.sort();
+    //     }
+    //
+    //     return timetable.save();
+    // }
+
+
+    async removeTime(userId: string, day: string, time: string): Promise<TimetableDocument> {
+        const timetable = await this.timetableModel.findOne({userId}).exec();
+        if (!timetable) {
+            throw new NotFoundException("Timetable not found.");
+        }
+
+        const daySchedule = timetable.schedule.find((s) => s.day === day);
+        if (!daySchedule) {
+            throw new BadRequestException(`No schedule found for ${day}.`);
+        }
+
+        const timeIndex = daySchedule.timeStamps.indexOf(time);
         if (timeIndex === -1) {
-            throw new BadRequestException('This time slot does not exist in the schedule.');
+            throw new BadRequestException("Time slot does not exist.");
         }
 
-        timetable.schedule.splice(timeIndex, 1);
-
-        await timetable.save();
-
-        return timetable;
+        daySchedule.timeStamps.splice(timeIndex, 1);
+        return timetable.save();
     }
 
-    /**
-     * Retrieves the timetable schedule for the specified user.
-     * @param userId - The ID of the user.
-     */
-    async getSchedule(userId: string): Promise<string[]> {
-        const timetable = await this.timetableModel.findOne({userId});
-
+    async getSchedule(userId: string): Promise<ScheduleObj[]> {
+        const timetable = await this.timetableModel.findOne({placeId: userId}).exec();
         if (!timetable) {
-            throw new NotFoundException('Timetable not found for the user.');
+            throw new NotFoundException("Timetable not found.");
         }
 
         return timetable.schedule;

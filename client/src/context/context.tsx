@@ -1,6 +1,6 @@
 import React, {createContext, useContext, useEffect, useState} from "react";
 import {message} from "antd";
-import {QueueClient, Queue} from "../interfaces";
+import {QueueClient, Queue, UserData} from "../interfaces";
 import AxiosAPI from "../api/api.service";
 import {useDebouncedMessage} from "../components/debouncedMessage/debouncedMessage";
 
@@ -14,8 +14,8 @@ export interface IAuthContext {
     axiosAPI: AxiosAPIInstance;
     current: string;
     setCurrent: React.Dispatch<React.SetStateAction<string>>;
-    userData: QueueClient | undefined;
-    setUserData: React.Dispatch<React.SetStateAction<QueueClient | undefined>>;
+    userData: UserData | undefined;
+    setUserData: React.Dispatch<React.SetStateAction<UserData | undefined>>;
     authProfileGetVerify: () => Promise<void>;
     isLoading: boolean;
     setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
@@ -35,7 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
     const [isAuth, setIsAuth] = useState<boolean>(false);
     const [isEmployee, setIsEmployee] = useState<boolean>(false);
     const [current, setCurrent] = useState<string>("1");
-    const [userData, setUserData] = useState<QueueClient | undefined>(undefined);
+    const [userData, setUserData] = useState<UserData | undefined>(undefined);
     const [queues, setQueues] = useState<Queue[]>([]);
     const [queueData, setQueueData] = useState<Queue>({__v: 0, _id: "", clients: [], name: "", places: []});
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -44,8 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
 
     const [axiosAPI, setAxiosAPI] = useState<AxiosAPI>(
         new AxiosAPI(process.env.REACT_APP_API_URL || "http://localhost:3000", setIsAuth, isAuth)
-    )
-
+    );
 
     async function authProfileGetVerify() {
         const delay =
@@ -60,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
             const profileResponse = await axiosAPI.getProfile();
             setIsAuth(true);
             try {
-                const userResponse: QueueClient = await axiosAPI.getUser(profileResponse.username);
+                const userResponse: UserData = await axiosAPI.getUser(profileResponse.username);
                 setUserData(userResponse);
             } catch (userError) {
                 console.error("Failed to fetch user data:", userError);
