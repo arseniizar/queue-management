@@ -20,6 +20,15 @@ A queues management system built using **NestJS** for the backend, **React** wit
 
 ---
 
+## Showcase
+
+Here are some demonstrations of the application in action:
+
+- [Video Showcase 1](https://www.youtube.com/watch?v=yefKQ_GZhiQ)
+- [Video Showcase 2](https://www.youtube.com/watch?v=zStZsJkpKt4)
+
+---
+
 ## Technologies Used
 
 ### Backend
@@ -193,12 +202,5 @@ For more details, refer to the official Google documentation: [Sign in using app
 - `styles/`: Global and component-specific styles.
 - `App.tsx`: Main application component.
 - `index.tsx`: Entry point of the React application.
-
-## Showcase
-
-Here are some demonstrations of the application in action:
-
-- [Video Showcase 1](https://www.youtube.com/watch?v=yefKQ_GZhiQ)
-- [Video Showcase 2](https://www.youtube.com/watch?v=zStZsJkpKt4)
 
 ---
