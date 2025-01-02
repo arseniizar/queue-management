@@ -49,7 +49,7 @@ Ensure you have the following installed or done:
   
 ## Connecting to MongoDB
 
-To set up and connect to a MongoDB database, refer to the official MongoDB installation and connection guide: [MongoDB Installation Guide](https://www.mongodb.com/docs/manual/installation/).
+To set up and connect to a MongoDB database, refer to the official MongoDB installation and connection guide: [MongoDB Installation Guide](https://www.mongodb.com/docs/manual/installation/), [NestJS documentation](https://docs.nestjs.com/techniques/mongodb).
 
 Update the `MONGO_URI` in your `.env` file with your MongoDB connection string. For example:
 ```env
