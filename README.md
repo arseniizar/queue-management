@@ -105,8 +105,8 @@ For more details, refer to the official Google documentation: [Sign in using app
 ### Steps
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/queues-management-app.git
-   cd queues-management-app
+   git clone https://github.com/arseniizar/queue-management.git
+   cd queue-management
    ```
 
 2. Since the client and server are separate projects, install dependencies for each part of the application. Run the following commands:

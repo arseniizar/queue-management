@@ -147,3 +147,7 @@ pnpm-lock.yaml
 .parcel-cache
 /client/.parcel-cache
 /server/.parcel-cache
+
+# Redis dump
+*.rdb
+dump.rdb
